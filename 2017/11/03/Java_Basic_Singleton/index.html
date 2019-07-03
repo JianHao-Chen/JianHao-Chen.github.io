@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="介绍Java单例模式的7种写法。">
+<meta name="keywords" content="Java">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Java单例模式的7种写法">
+<meta property="og:url" content="http://yoursite.com/2017/11/03/Java_Basic_Singleton/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="介绍Java单例模式的7种写法。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-05-11T08:40:39.947Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Java单例模式的7种写法">
+<meta name="twitter:description" content="介绍Java单例模式的7种写法。">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2017/11/03/Java_Basic_Singleton/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Java单例模式的7种写法 | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2017/11/03/Java_Basic_Singleton/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Java单例模式的7种写法
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2017-11-03 14:36:00" itemprop="dateCreated datePublished" datetime="2017-11-03T14:36:00+08:00">2017-11-03</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-05-11 16:40:39" itemprop="dateModified" datetime="2019-05-11T16:40:39+08:00">2019-05-11</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/" itemprop="url" rel="index"><span itemprop="name">基础</span></a></span>
+
+                
+                
+                  ，
+                
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/Java/" itemprop="url" rel="index"><span itemprop="name">Java</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>介绍Java单例模式的7种写法。</p>
+<a id="more"></a>
+<p>单例模式要求类能够有返回对象一个引用(永远是同一个)和一个获得该实例的方法（必须是静态方法）。</p>
+<p>单例的实现有以下两个步骤：</p>
+<ol>
+<li>将该类的构造方法定义为私有方法，这样其他的代码就无法通过调用该类的构造方法来实例化该类的对象，只有通过该类提供的静态方法来得到该类的唯一实例。</li>
+<li>在该类内提供一个静态方法，当我们调用这个方法时，如果类持有的引用不为空就返回这个引用，如果类保持的引用为空就创建该类的实例并将实例的引用赋予该类保持的引用。</li>
+</ol>
+<h3 id="单例模式的7种写法"><a href="#单例模式的7种写法" class="headerlink" title="单例模式的7种写法"></a>单例模式的7种写法</h3><h4 id="饿汉式-静态常量-【可用】"><a href="#饿汉式-静态常量-【可用】" class="headerlink" title="饿汉式(静态常量)【可用】"></a>饿汉式(静态常量)【可用】</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">public class Singleton &#123;</span><br><span class="line">  private final static Singleton INSTANCE = new Singleton();</span><br><span class="line">  private <span class="function"><span class="title">Singleton</span></span>()&#123;&#125;</span><br><span class="line">  public static Singleton <span class="function"><span class="title">getInstance</span></span>()&#123;</span><br><span class="line">    <span class="built_in">return</span> INSTANCE;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>优点：这种写法比较简单，就是在类装载的时候就完成实例化。避免了线程同步问题。<br>缺点：在类装载的时候就完成实例化，没有达到Lazy Loading的效果。如果从始至终从未使用过这个实例，则会造成内存的浪费。</p>
+<h4 id="懒汉式-线程不安全-【不可用】"><a href="#懒汉式-线程不安全-【不可用】" class="headerlink" title="懒汉式(线程不安全)【不可用】"></a>懒汉式(线程不安全)【不可用】</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">public class Singleton &#123;</span><br><span class="line">  private static Singleton singleton;</span><br><span class="line">  private <span class="function"><span class="title">Singleton</span></span>() &#123;&#125;</span><br><span class="line"></span><br><span class="line">  public static Singleton <span class="function"><span class="title">getInstance</span></span>() &#123;</span><br><span class="line">    <span class="keyword">if</span> (singleton == null) &#123;</span><br><span class="line">      singleton = new Singleton();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">return</span> singleton;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这种写法起到了Lazy Loading的效果，但是只能在单线程下使用。</p>
+<h4 id="懒汉式-线程安全，同步方法-【不推荐】"><a href="#懒汉式-线程安全，同步方法-【不推荐】" class="headerlink" title="懒汉式(线程安全，同步方法)【不推荐】"></a>懒汉式(线程安全，同步方法)【不推荐】</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">public class Singleton &#123;</span><br><span class="line">  private static Singleton singleton;</span><br><span class="line">  private <span class="function"><span class="title">Singleton</span></span>() &#123;&#125;</span><br><span class="line">  </span><br><span class="line">  public static synchronized Singleton <span class="function"><span class="title">getInstance</span></span>() &#123;</span><br><span class="line">    <span class="keyword">if</span> (singleton == null) &#123;</span><br><span class="line">      singleton = new Singleton();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">return</span> singleton;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>缺点：效率太低了，每个线程在想获得类的实例时候，执行getInstance()方法都要进行同步。而其实这个方法只执行一次实例化代码就够了，后面的想获得该类实例，直接return就行了。</p>
+<h4 id="懒汉式-线程不安全，同步方法-【不可用】"><a href="#懒汉式-线程不安全，同步方法-【不可用】" class="headerlink" title="懒汉式(线程不安全，同步方法)【不可用】"></a>懒汉式(线程不安全，同步方法)【不可用】</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">public class Singleton &#123;</span><br><span class="line">  private static Singleton singleton;</span><br><span class="line">  private <span class="function"><span class="title">Singleton</span></span>() &#123;&#125;</span><br><span class="line"></span><br><span class="line">  public static Singleton <span class="function"><span class="title">getInstance</span></span>() &#123;</span><br><span class="line">    <span class="keyword">if</span> (singleton == null) &#123;</span><br><span class="line">      synchronized (Singleton.class) &#123;</span><br><span class="line">        singleton = new Singleton();</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">return</span> singleton;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>尝试将第3种写法改进，首先判断singleton引用是否为null，如果不是直接返回实例的引用，否则进入同步块创建实例。<br>这种写法是线程不安全的。假设：<br>线程A进入getInstance()方法，判断singleton==null，此时发生调度，线程B执行，进入getInstance()方法，同样判断singleton==null，于是进入同步块，创建实例并返回。当线程A继续执行时，也会进入同步块，创建实例。这样实例就不是唯一的。</p>
+<h4 id="懒汉式-线程不安全，双重检查锁定-【不可用】"><a href="#懒汉式-线程不安全，双重检查锁定-【不可用】" class="headerlink" title="懒汉式(线程不安全，双重检查锁定)【不可用】"></a>懒汉式(线程不安全，双重检查锁定)【不可用】</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">public class Singleton &#123;</span><br><span class="line">  private static Singleton singleton;</span><br><span class="line">  private <span class="function"><span class="title">Singleton</span></span>() &#123;&#125;</span><br><span class="line"></span><br><span class="line">  public static Singleton <span class="function"><span class="title">getInstance</span></span>() &#123;</span><br><span class="line">    <span class="keyword">if</span> (singleton == null) &#123;            //第一次检查</span><br><span class="line">      synchronized (Singleton.class) &#123;  // 加锁</span><br><span class="line">        <span class="keyword">if</span>(singleton == null)           //第二次检查</span><br><span class="line">          singleton = new Singleton();  // ！！ 危险 ！！</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">return</span> singleton;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这种写法是写法4的改进，似乎解决了问题，因为后进入同步块的线程是不可能看到<code>singleton == null</code>，不会重复生成实例。<br>但是，还有一个问题：<font color="red">当某个线程第一次检查<code>singleton == null</code>时，即使 singleton != null，singleton引用的对象可能还没有完成初始化！</font></p>
+<p>语句 <code>singleton = new Singleton();</code> 创建一个对象，其实可以分解为3步：<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">memory = allocate;    // 1. 分配对象的内存空间</span><br><span class="line">Init(memory);         // 2. 初始化对象</span><br><span class="line">singleton = memory;   // 3. 设置singleton指向memory</span><br></pre></td></tr></table></figure></p>
+<p>而第2步和第3步，可能被重排序。因此，可能出现以下这种时序：</p>
+<table>
+<thead>
+<tr>
+<th>时间</th>
+<th style="text-align:center">线程A</th>
+<th style="text-align:center">线程B</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>t1</td>
+<td style="text-align:center">A1: 分配对象的内存空间</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td>t2</td>
+<td style="text-align:center">A3: 设置singleton指向内存空间</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td>t3</td>
+<td style="text-align:center"></td>
+<td style="text-align:center">B1: 判断singleton是否为空</td>
+</tr>
+<tr>
+<td>t4</td>
+<td style="text-align:center"></td>
+<td style="text-align:center">B2: 由于singleton不为null，线程B将访问singleton引用的对象</td>
+</tr>
+<tr>
+<td>t5</td>
+<td style="text-align:center">A2: 初始化对象</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td>t6</td>
+<td style="text-align:center">A4: 访问singleton引用的对象</td>
+<td style="text-align:center"><font color="white">;</font></td>
+</tr>
+</tbody>
+</table>
+<p>既然知道了问题的根源，我们可以想出2种方法来解决：</p>
+<ul>
+<li>不允许2和3重排序。</li>
+<li>允许2和3重排序，但不允许其它线程“看到”这个重排序。</li>
+</ul>
+<h4 id="懒汉式-线程安全，双重检查锁定-volatile-【可用】"><a href="#懒汉式-线程安全，双重检查锁定-volatile-【可用】" class="headerlink" title="懒汉式(线程安全，双重检查锁定+volatile)【可用】"></a>懒汉式(线程安全，双重检查锁定+volatile)【可用】</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">public class Singleton &#123;</span><br><span class="line">  private volatile static Singleton singleton;</span><br><span class="line">  private <span class="function"><span class="title">Singleton</span></span>() &#123;&#125;</span><br><span class="line"></span><br><span class="line">  public static Singleton <span class="function"><span class="title">getInstance</span></span>() &#123;</span><br><span class="line">    <span class="keyword">if</span> (singleton == null) &#123;</span><br><span class="line">      synchronized (Singleton.class) &#123;</span><br><span class="line">        <span class="keyword">if</span>(singleton == null)</span><br><span class="line">          singleton = new Singleton();</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">return</span> singleton;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这种写法与写法5相比，只是将singleton声明为volatile。<br>这样，创建对象singleton时，步骤2和3的重排序会被禁止。</p>
+<p>【注意】<br>这种解决方法需要JDK5或更高版本，因为从JDK5开始使用新的JSR-133内存模型规范，这个规范增强了volatile的语义。</p>
+<h4 id="静态内部类-线程安全"><a href="#静态内部类-线程安全" class="headerlink" title="静态内部类(线程安全)"></a>静态内部类(线程安全)</h4><p>JVM在执行类的初始化(即在Class被加载后，且被线程使用之前)时，会获取一个锁，这个锁可以同步多个线程对同一个类的初始化。<br>因此，我们可以利用这个特性实现以下的单例模式：<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">public class Singleton &#123;</span><br><span class="line">  private <span class="function"><span class="title">Singleton</span></span>() &#123;&#125;</span><br><span class="line"></span><br><span class="line">  private static class SingletonInstance&#123;</span><br><span class="line">    private static final Singleton INSTANCE = new Singleton();</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  public static Singleton <span class="function"><span class="title">getInstance</span></span>()&#123;</span><br><span class="line">    <span class="built_in">return</span> SingletonInstance.INSTANCE;  //这里将导致SingletonInstance类被初始化</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>这种方式采用了<strong>不允许其它线程看到重排序</strong>的策略，因为通过锁将其他线程排除在外了。</p>
+<p>这种方式跟饿汉式方式采用的机制类似，但又有不同。两者都是采用了类装载的机制来保证初始化实例时只有一个线程。不同的地方在饿汉式方式是只要Singleton类被装载就会实例化，没有Lazy-Loading的作用，而静态内部类方式在Singleton类被装载时并不会立即实例化，而是在需要实例化时，调用getInstance方法，才会装载SingletonInstance类，从而完成Singleton的实例化。</p>
+<h4 id="枚举【可用】"><a href="#枚举【可用】" class="headerlink" title="枚举【可用】"></a>枚举【可用】</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">public enum Singleton &#123;</span><br><span class="line">  INSTANCE;</span><br><span class="line">  public void <span class="function"><span class="title">whateverMethod</span></span>() &#123;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>借助JDK1.5中添加的枚举来实现单例模式。不仅能避免多线程同步问题，而且还能防止反序列化重新创建新的对象。可能是因为枚举在JDK1.5中才添加，所以在实际项目开发中，很少见人这么写过。</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Java/" rel="tag"># Java</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2017/11/02/Java_Basic_Thread_Func/" rel="next" title="Java线程的几个方法">
+                <i class="fa fa-chevron-left"></i> Java线程的几个方法
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2018/02/12/IOModel/" rel="prev" title="IO模型">
+                IO模型 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">14</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">3</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">5</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#单例模式的7种写法"><span class="nav-number">1.</span> <span class="nav-text">单例模式的7种写法</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#饿汉式-静态常量-【可用】"><span class="nav-number">1.1.</span> <span class="nav-text">饿汉式(静态常量)【可用】</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#懒汉式-线程不安全-【不可用】"><span class="nav-number">1.2.</span> <span class="nav-text">懒汉式(线程不安全)【不可用】</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#懒汉式-线程安全，同步方法-【不推荐】"><span class="nav-number">1.3.</span> <span class="nav-text">懒汉式(线程安全，同步方法)【不推荐】</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#懒汉式-线程不安全，同步方法-【不可用】"><span class="nav-number">1.4.</span> <span class="nav-text">懒汉式(线程不安全，同步方法)【不可用】</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#懒汉式-线程不安全，双重检查锁定-【不可用】"><span class="nav-number">1.5.</span> <span class="nav-text">懒汉式(线程不安全，双重检查锁定)【不可用】</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#懒汉式-线程安全，双重检查锁定-volatile-【可用】"><span class="nav-number">1.6.</span> <span class="nav-text">懒汉式(线程安全，双重检查锁定+volatile)【可用】</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#静态内部类-线程安全"><span class="nav-number">1.7.</span> <span class="nav-text">静态内部类(线程安全)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#枚举【可用】"><span class="nav-number">1.8.</span> <span class="nav-text">枚举【可用】</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
