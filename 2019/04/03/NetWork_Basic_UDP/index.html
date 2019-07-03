@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="本文简单介绍UDP协议。">
+<meta name="keywords" content="网络">
+<meta property="og:type" content="article">
+<meta property="og:title" content="UDP简介">
+<meta property="og:url" content="http://yoursite.com/2019/04/03/NetWork_Basic_UDP/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="本文简单介绍UDP协议。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-06-18T08:57:11.270Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="UDP简介">
+<meta name="twitter:description" content="本文简单介绍UDP协议。">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2019/04/03/NetWork_Basic_UDP/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>UDP简介 | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/04/03/NetWork_Basic_UDP/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">UDP简介
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-04-03 08:55:00" itemprop="dateCreated datePublished" datetime="2019-04-03T08:55:00+08:00">2019-04-03</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-06-18 16:57:11" itemprop="dateModified" datetime="2019-06-18T16:57:11+08:00">2019-06-18</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/" itemprop="url" rel="index"><span itemprop="name">基础</span></a></span>
+
+                
+                
+                  ，
+                
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/网络/" itemprop="url" rel="index"><span itemprop="name">网络</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>本文简单介绍UDP协议。</p>
+<a id="more"></a>
+<h3 id="UDP的介绍"><a href="#UDP的介绍" class="headerlink" title="UDP的介绍"></a>UDP的介绍</h3><h4 id="定义"><a href="#定义" class="headerlink" title="定义"></a>定义</h4><p>UDP简单的面向数据报的、不可靠的传输层协议。</p>
+<h4 id="UDP首部"><a href="#UDP首部" class="headerlink" title="UDP首部"></a>UDP首部</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">-----------------------------------------------------</span><br><span class="line">|    16位源端口号               |     16位目的端口号  |</span><br><span class="line"> ----------------------------------------------------</span><br><span class="line">|  16位UDP长度（UDP首部+ 数据）  |     16位UDP检验和   |</span><br><span class="line"> -----------------------------------------------------</span><br><span class="line">|                    数据（如果有）                   |</span><br><span class="line">------------------------------------------------------</span><br></pre></td></tr></table></figure>
+<h4 id="UDP包的大小"><a href="#UDP包的大小" class="headerlink" title="UDP包的大小"></a>UDP包的大小</h4><h5 id="理论上限"><a href="#理论上限" class="headerlink" title="理论上限"></a>理论上限</h5><p>UDP协议中有16位的UDP报文长度，那么UDP报文长度不能超过2^16=65536</p>
+<h5 id="IP层分片"><a href="#IP层分片" class="headerlink" title="IP层分片"></a>IP层分片</h5><p>实际上，对于较长的数据，IP层是会分片的：</p>
+<blockquote>
+<p>链路层对数据帧有长度限制，称之为“最大传输单元MTU”。</p>
+<p>如果IP层要传一个数据报，而且数据长度比链路层MTU还大，那么IP层将数据分片，使每一个分片都小于MTU。</p>
+</blockquote>
+<h5 id="局域网环境"><a href="#局域网环境" class="headerlink" title="局域网环境"></a>局域网环境</h5><p>以太网(Ethernet)数据帧的长度必须在46-1500字节之间,这是由以太网的物理特性决定的，这个1500字节被称为链路层的MTU(最大传输单元)。所以这个1500字节就是网络层IP数据报的长度限制。</p>
+<p>因为IP数据报的首部为20字节，所以IP数据报的数据区长度最大为1480字节。而这个1480字节就是用来放TCP传来的TCP报文段或UDP传来的UDP数据报的。</p>
+<p>又因为UDP数据报的首部8字节，所以UDP数据报的数据区最大长度为1472字节。</p>
+<p><font color="green"><strong>在普通的局域网环境下，建议将UDP的数据控制在1472字节以下</strong></font>。</p>
+<h5 id="外网环境"><a href="#外网环境" class="headerlink" title="外网环境"></a>外网环境</h5><p>鉴于Internet上的标准MTU值为576字节，<font color="green"><strong>UDP的数据长度控件在548字节(576-8-20)以内</strong></font>。</p>
+<h4 id="UDP包的发送和接收"><a href="#UDP包的发送和接收" class="headerlink" title="UDP包的发送和接收"></a>UDP包的发送和接收</h4><h5 id="UDP的通信有界性"><a href="#UDP的通信有界性" class="headerlink" title="UDP的通信有界性"></a>UDP的通信有界性</h5><p>在阻塞模式下，UDP的通信是以数据包作为界限的，即使server端的缓冲区再大也要按照client发包的次数来多次接收数据包</p>
+<h5 id="UDP数据包的无序性和非可靠性"><a href="#UDP数据包的无序性和非可靠性" class="headerlink" title="UDP数据包的无序性和非可靠性"></a>UDP数据包的无序性和非可靠性</h5><p>client依次发送1、2、3三个UDP数据包，server端先后调用3次接收函数，可能会依次收到3、2、1次序的数据包，收包可能是1、2、3的任意排列组合，也可能丢失一个或多个数据包。</p>
+<h5 id="UDP数据包的接收"><a href="#UDP数据包的接收" class="headerlink" title="UDP数据包的接收"></a>UDP数据包的接收</h5><p>client发送两次UDP数据，第一次 500字节，第二次300字节，在假定数据包是不丢失并且是按照发送顺序按序到达的情况下，server端阻塞模式下接包，先后三次调用：recvfrom( 200)，recvfrom( 1000)，recvfrom( 1000)，接收情况如何呢？</p>
+<p>由于UDP通信的有界性，第一次recvfrom( 200)将接收第一个500字节的数据包，但是因为用户空间buf只有200字节，于是只会返回前面200字节，剩下300字节将丢弃。第二次recvfrom( 1000)将返回300字节，第三次recvfrom( 1000)将会阻塞。</p>
+<h4 id="UDP丢包问题"><a href="#UDP丢包问题" class="headerlink" title="UDP丢包问题"></a>UDP丢包问题</h4><p>在不考虑UDP下层IP层的分片丢失，CRC检验包不完整的情况下，造成UDP丢包的因素有哪些呢？</p>
+<h5 id="UDP-socket缓冲区满（过小）造成的UDP丢包"><a href="#UDP-socket缓冲区满（过小）造成的UDP丢包" class="headerlink" title="UDP socket缓冲区满（过小）造成的UDP丢包"></a>UDP socket缓冲区满（过小）造成的UDP丢包</h5><p>如果socket缓冲区满了，应用程序没来得及处理在缓冲区中的UDP包，那么后续来的UDP包会被内核丢弃，造成丢包。</p>
+<h5 id="ARP缓存过期导致UDP丢包"><a href="#ARP缓存过期导致UDP丢包" class="headerlink" title="ARP缓存过期导致UDP丢包"></a>ARP缓存过期导致UDP丢包</h5><p>ARP 的缓存时间约10分钟，APR 缓存列表没有对方的 MAC 地址或缓存过期的时候，会发送 ARP 请求获取 MAC 地址，在没有获取到 MAC 地址之前，用户发送出去的 UDP 数据包会被内核缓存到 arp_queue 这个队列中，默认最多缓存3个包，多余的 UDP 包会被丢弃。</p>
+<h4 id="UDP的使用场景"><a href="#UDP的使用场景" class="headerlink" title="UDP的使用场景"></a>UDP的使用场景</h4><h5 id="对实时性要求高"><a href="#对实时性要求高" class="headerlink" title="对实时性要求高"></a>对实时性要求高</h5><p>比如实时会议，实时视频这种情况下，如果使用 TCP，当网络不好发生重传时，画面肯定会有延时，甚至越堆越多。如果使用 UDP 的话，即使偶尔丢了几个包，但是也不会影响什么，这种情况下使用 UDP 比较好；</p>
+<h5 id="多点通信"><a href="#多点通信" class="headerlink" title="多点通信"></a>多点通信</h5><p>TCP 需要保持一个长连接，那么在涉及多点通讯的时候，肯定需要和多个通信节点建立其双向连接，然后有时在NAT环境下，两个通信节点建立其直接的 TCP 连接不是一个容易的事情，而 UDP 可以无需保持连接，直接发就可以了，所以成本会很低，而且穿透性好。这种情况下使用 UDP 也是没错的。</p>
+<h4 id="UDP于TCP的简单比较"><a href="#UDP于TCP的简单比较" class="headerlink" title="UDP于TCP的简单比较"></a>UDP于TCP的简单比较</h4><ul>
+<li>TCP：面向连接、面向字节流、可靠的</li>
+<li>UDP：无连接的、面向报文的、不可靠的</li>
+</ul>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/网络/" rel="tag"># 网络</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/04/02/NetWork_Basic_TCP/" rel="next" title="TCP简介">
+                <i class="fa fa-chevron-left"></i> TCP简介
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/04/04/NetWork_Basic_HTTP/" rel="prev" title="HTTP简介">
+                HTTP简介 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">34</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">5</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">7</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#UDP的介绍"><span class="nav-number">1.</span> <span class="nav-text">UDP的介绍</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#定义"><span class="nav-number">1.1.</span> <span class="nav-text">定义</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#UDP首部"><span class="nav-number">1.2.</span> <span class="nav-text">UDP首部</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#UDP包的大小"><span class="nav-number">1.3.</span> <span class="nav-text">UDP包的大小</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#理论上限"><span class="nav-number">1.3.1.</span> <span class="nav-text">理论上限</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#IP层分片"><span class="nav-number">1.3.2.</span> <span class="nav-text">IP层分片</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#局域网环境"><span class="nav-number">1.3.3.</span> <span class="nav-text">局域网环境</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#外网环境"><span class="nav-number">1.3.4.</span> <span class="nav-text">外网环境</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#UDP包的发送和接收"><span class="nav-number">1.4.</span> <span class="nav-text">UDP包的发送和接收</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#UDP的通信有界性"><span class="nav-number">1.4.1.</span> <span class="nav-text">UDP的通信有界性</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#UDP数据包的无序性和非可靠性"><span class="nav-number">1.4.2.</span> <span class="nav-text">UDP数据包的无序性和非可靠性</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#UDP数据包的接收"><span class="nav-number">1.4.3.</span> <span class="nav-text">UDP数据包的接收</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#UDP丢包问题"><span class="nav-number">1.5.</span> <span class="nav-text">UDP丢包问题</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#UDP-socket缓冲区满（过小）造成的UDP丢包"><span class="nav-number">1.5.1.</span> <span class="nav-text">UDP socket缓冲区满（过小）造成的UDP丢包</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#ARP缓存过期导致UDP丢包"><span class="nav-number">1.5.2.</span> <span class="nav-text">ARP缓存过期导致UDP丢包</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#UDP的使用场景"><span class="nav-number">1.6.</span> <span class="nav-text">UDP的使用场景</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#对实时性要求高"><span class="nav-number">1.6.1.</span> <span class="nav-text">对实时性要求高</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#多点通信"><span class="nav-number">1.6.2.</span> <span class="nav-text">多点通信</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#UDP于TCP的简单比较"><span class="nav-number">1.7.</span> <span class="nav-text">UDP于TCP的简单比较</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

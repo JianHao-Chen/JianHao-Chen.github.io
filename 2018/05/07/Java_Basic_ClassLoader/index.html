@@ -96,18 +96,18 @@
 
 
 
-  <meta name="description" content="回到这个问题:1234567891011121314151617181920class Outter&amp;#123;  public void go()&amp;#123;    final int filed = 12;        Thread t = new Thread(&quot;TestThread&quot;)&amp;#123;      public void run()&amp;#123;        System.ou">
+  <meta name="description" content="这篇文章主要是整理学习过程中Java的ClassLoader的一些知识点。">
 <meta name="keywords" content="Java">
 <meta property="og:type" content="article">
-<meta property="og:title" content="匿名内部类">
-<meta property="og:url" content="http://yoursite.com/2018/05/03/Java_Basic_Anonymous_Inner_Classes/index.html">
+<meta property="og:title" content="ClassLoader的原理和API">
+<meta property="og:url" content="http://yoursite.com/2018/05/07/Java_Basic_ClassLoader/index.html">
 <meta property="og:site_name" content="Hexo">
-<meta property="og:description" content="回到这个问题:1234567891011121314151617181920class Outter&amp;#123;  public void go()&amp;#123;    final int filed = 12;        Thread t = new Thread(&quot;TestThread&quot;)&amp;#123;      public void run()&amp;#123;        System.ou">
+<meta property="og:description" content="这篇文章主要是整理学习过程中Java的ClassLoader的一些知识点。">
 <meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2019-05-11T14:12:06.163Z">
+<meta property="og:updated_time" content="2019-05-11T15:06:27.607Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="匿名内部类">
-<meta name="twitter:description" content="回到这个问题:1234567891011121314151617181920class Outter&amp;#123;  public void go()&amp;#123;    final int filed = 12;        Thread t = new Thread(&quot;TestThread&quot;)&amp;#123;      public void run()&amp;#123;        System.ou">
+<meta name="twitter:title" content="ClassLoader的原理和API">
+<meta name="twitter:description" content="这篇文章主要是整理学习过程中Java的ClassLoader的一些知识点。">
 
 
 
@@ -115,7 +115,7 @@
 
   
   
-  <link rel="canonical" href="http://yoursite.com/2018/05/03/Java_Basic_Anonymous_Inner_Classes/">
+  <link rel="canonical" href="http://yoursite.com/2018/05/07/Java_Basic_ClassLoader/">
 
 
 
@@ -125,7 +125,7 @@
   };
 </script>
 
-  <title>匿名内部类 | Hexo</title>
+  <title>ClassLoader的原理和API | Hexo</title>
   
 
 
@@ -324,7 +324,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/05/03/Java_Basic_Anonymous_Inner_Classes/">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/05/07/Java_Basic_ClassLoader/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="JH_Chen">
@@ -341,7 +341,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">匿名内部类
+          <h1 class="post-title" itemprop="name headline">ClassLoader的原理和API
 
               
             
@@ -367,7 +367,7 @@
                 
               
 
-              <time title="创建时间：2018-05-03 21:36:00" itemprop="dateCreated datePublished" datetime="2018-05-03T21:36:00+08:00">2018-05-03</time>
+              <time title="创建时间：2018-05-07 10:12:00" itemprop="dateCreated datePublished" datetime="2018-05-07T10:12:00+08:00">2018-05-07</time>
             
 
             
@@ -384,7 +384,7 @@
                 
                   <span class="post-meta-item-text">更新于</span>
                 
-                <time title="修改时间：2019-05-11 22:12:06" itemprop="dateModified" datetime="2019-05-11T22:12:06+08:00">2019-05-11</time>
+                <time title="修改时间：2019-05-11 23:06:27" itemprop="dateModified" datetime="2019-05-11T23:06:27+08:00">2019-05-11</time>
               
             
           </span>
@@ -440,21 +440,46 @@
       
 
       
-        <p>回到这个问题:<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">class Outter&#123;</span><br><span class="line">  public void <span class="function"><span class="title">go</span></span>()&#123;</span><br><span class="line">    final int filed = 12;</span><br><span class="line">    </span><br><span class="line">    Thread t = new Thread(<span class="string">"TestThread"</span>)&#123;</span><br><span class="line">      public void <span class="function"><span class="title">run</span></span>()&#123;</span><br><span class="line">        System.out.println(filed);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;;</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  public void goWithParameter(final int field)&#123;</span><br><span class="line">  </span><br><span class="line">    Thread t = new Thread(<span class="string">""</span>)&#123;</span><br><span class="line">      public void <span class="function"><span class="title">run</span></span>()&#123;</span><br><span class="line">        System.out.println(field);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>不论是<code>go()</code>还是<code>goWithParameter()</code>，它们所访问的<code>field</code>都必须带有<code>final</code>修饰符，否则编译报错。为什么？</p>
+        <p>这篇文章主要是整理学习过程中Java的ClassLoader的一些知识点。</p>
 <a id="more"></a>
-<p>先说答案：<font color="green">其实上面这种就叫匿名内部类，它只能访问局部final变量！！</font></p>
-<p>下面通过分析它们的字节码来搞明白其中的原理:</p>
-<h4 id="go-方法中的匿名内部类"><a href="#go-方法中的匿名内部类" class="headerlink" title="go()方法中的匿名内部类"></a>go()方法中的匿名内部类</h4><p>编译器把这个内部类命名为”Outter$1”。它的run()方法的字节码如下 ：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">public void run();</span><br><span class="line">  descriptor: ()V</span><br><span class="line">  flags: ACC_PUBLIC</span><br><span class="line">  Code:</span><br><span class="line">    stack=2, locals=1, args_size=1</span><br><span class="line">      0: getstatic     #23                 // Field java/lang/System.out:Ljava/io/PrintStream;</span><br><span class="line">      3: bipush        12</span><br><span class="line">      5: invokevirtual #29                 // Method java/io/PrintStream.println:(I)V</span><br><span class="line">      8: return</span><br><span class="line">    LineNumberTable:</span><br><span class="line">      line 68: 0</span><br><span class="line">      line 69: 8</span><br><span class="line">    LocalVariableTable:</span><br><span class="line">      Start  Length  Slot  Name   Signature</span><br><span class="line">        0        9      0   this    Ljvm/innerClass/Outter$1;</span><br></pre></td></tr></table></figure>
-<p>在run方法中有一条指令：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">bipush        12</span><br></pre></td></tr></table></figure></p>
-<p>这条指令表示将操作数12压栈，表示使用的是一个本地局部变量。这个过程是在编译期间由编译器默认进行，如果这个变量的值在编译期间可以确定，则编译器默认会在匿名内部类（局部内部类）的常量池中添加一个内容相等的字面量或直接将相应的字节码嵌入到执行字节码中。这样一来，匿名内部类使用的变量是另一个局部变量，只不过值和方法中局部变量的值相等，因此和方法中的局部变量完全独立开。</p>
-<p>为什么匿名内部类里面操作的是另一份变量？<br>当go方法执行完毕之后，变量filed的生命周期就结束了,而此时Thread对象的生命周期很可能还没有结束，那么在Thread的run方法中继续访问变量a就变成不可能了，但是又要实现这样的效果，怎么办呢？Java采用了 &lt;复制&gt;  的手段来解决这个问题。</p>
-<p>为解决数据不一致性问题， java规定了将参数限制为final。</p>
-<h4 id="goWithParameter-方法中的匿名内部类"><a href="#goWithParameter-方法中的匿名内部类" class="headerlink" title="goWithParameter()方法中的匿名内部类"></a>goWithParameter()方法中的匿名内部类</h4><p>编译器把这个内部类命名为”Outter$2”。先看它的构造方法的字节码 ：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">jvm.innerClass.Outter$2(jvm.innerClass.Outter, java.lang.String, int);</span><br><span class="line">  descriptor: (Ljvm/innerClass/Outter;Ljava/lang/String;I)V</span><br><span class="line">  flags:</span><br><span class="line">  Code:</span><br><span class="line">    stack=2, locals=4, args_size=4</span><br><span class="line">      0: aload_0</span><br><span class="line">      1: aload_1</span><br><span class="line">      2: putfield      #12      // Field this$0:Ljvm/innerClass/Outter;</span><br><span class="line">      5: aload_0</span><br><span class="line">      6: iload_3</span><br><span class="line">      7: putfield      #14      // Field val$field:I</span><br><span class="line">      10: aload_0</span><br><span class="line">      11: aload_2</span><br><span class="line">      12: invokespecial #16     // Method java/lang/Thread.&quot;&lt;init&gt;&quot;:(Ljava/lang/String;)V</span><br><span class="line">      15: return</span><br><span class="line">    LineNumberTable:</span><br><span class="line">      line 1: 0</span><br><span class="line">      line 75: 10</span><br><span class="line">    LocalVariableTable:</span><br><span class="line">      Start  Length  Slot  Name   Signature</span><br><span class="line">        0      16     0    this   Ljvm/innerClass/Outter$2;</span><br><span class="line">        0      16     2    $anonymous0   Ljava/lang/String;</span><br></pre></td></tr></table></figure></p>
-<p>这里是将变量goWithParameter方法中的形参field以参数的形式传进来对匿名内部类中的拷贝（变量field的拷贝）进行赋值初始化。</p>
-<p>然后再看它的run()方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">public void run();</span><br><span class="line">  descriptor: ()V</span><br><span class="line">  flags: ACC_PUBLIC</span><br><span class="line">  Code:</span><br><span class="line">    stack=2, locals=1, args_size=1</span><br><span class="line">      0: getstatic     #27                 // Field java/lang/System.out:Ljava/io/PrintStream;</span><br><span class="line">      3: aload_0</span><br><span class="line">      4: getfield      #14                 // Field val$field:I</span><br><span class="line">      7: invokevirtual #33                 // Method java/io/PrintStream.println:(I)V</span><br><span class="line">      10: return</span><br><span class="line">    LineNumberTable:</span><br><span class="line">      line 77: 0</span><br><span class="line">      line 78: 10</span><br><span class="line">    LocalVariableTable:</span><br><span class="line">      Start  Length  Slot  Name   Signature</span><br><span class="line">          0      11     0  this   Ljvm/innerClass/Outter_A$2;</span><br></pre></td></tr></table></figure></p>
-<p>与Outter$1的run()方法相比，它的run()方法在调用“System.out.println(field)”之前，调用了“getfield      #14”，这个就是在构造函数里面设置进去的goWithParameter()方法的入参值。</p>
+<h3 id="ClassLoader的原理"><a href="#ClassLoader的原理" class="headerlink" title="ClassLoader的原理"></a>ClassLoader的原理</h3><h4 id="职责"><a href="#职责" class="headerlink" title="职责"></a>职责</h4><ol>
+<li>根据一个指定的类的名称,找到或者生成其对应的字节代码，然后从这些字节代码中定义出一个 Java 类，即 java.lang.Class类的一个实例。</li>
+<li>ClassLoader还负责加载 Java 应用所需的资源，如图像文件和配置文件等。</li>
+</ol>
+<p>【注意】</p>
+<ul>
+<li>每一个Class对象,都有一个指向它的ClassLoader的引用。</li>
+<li>数组类型的Class对象,不是由ClassLoader生成的，而是由JVM创建的。</li>
+</ul>
+<h4 id="ClassLoader的树状组织结构"><a href="#ClassLoader的树状组织结构" class="headerlink" title="ClassLoader的树状组织结构"></a>ClassLoader的树状组织结构</h4><p>Java 中的类加载器大致可以分成两类，一类是系统提供的，另外一类则是由 Java 应用开发人员编写的。</p>
+<p>系统提供的类加载器有下面三个:</p>
+<ol>
+<li>引导类加载器(bootstrap class loader)<br>它用来加载 Java 的核心库，是用C++来实现的，在Java中看不到它，是null。它用来加载核心类库，就是在lib下的类库。</li>
+<li>扩展类加载器(extensions class loader)<br>加载lib/ext下的类库</li>
+<li>系统类加载器(system class loader)<br>它根据 Java 应用的类路径（CLASSPATH）来加载 Java 类。一般来说，Java 应用的类都是由它来完成加载的。可通过 ClassLoader.getSystemClassLoader()来获取它。</li>
+</ol>
+<p>开发人员可以通过继承 java.lang.ClassLoader类的方式实现自己的类加载器.</p>
+<h4 id="Java-虚拟机是如何判定两个-Java-类是相同的"><a href="#Java-虚拟机是如何判定两个-Java-类是相同的" class="headerlink" title="Java 虚拟机是如何判定两个 Java 类是相同的"></a>Java 虚拟机是如何判定两个 Java 类是相同的</h4><p>Java 虚拟机不仅要看类的全名是否相同，还要看加载此类的类加载器是否一样。只有两者都相同的情况，才认为两个类是相同的。即便是同样的字节代码，被不同的类加载器加载之后所得到的类，也是不同的。</p>
+<h4 id="ClassLoader的委托模型-delegation-model"><a href="#ClassLoader的委托模型-delegation-model" class="headerlink" title="ClassLoader的委托模型(delegation model)"></a>ClassLoader的委托模型(delegation model)</h4><p>类加载器在尝试自己去查找某个类的字节代码并定义它时，会先代理给其父类加载器，由父类加载器先去尝试加载这个类。于是,加载一个类时，首先BootStrap进行寻找，找不到再由Extension ClassLoader寻找，最后才是App ClassLoader。</p>
+<h4 id="defining-loader-和-initiating-loader"><a href="#defining-loader-和-initiating-loader" class="headerlink" title="defining loader 和 initiating loader"></a>defining loader 和 initiating loader</h4><p>加载类的时候，类加载器会首先代理给其它类加载器来尝试加载某个类,这就意味着真正完成类的加载工作的类加载器和启动这个加载过程的类加载器，有可能不是同一个。</p>
+<p>☆ 真正完成类的加载工作是通过调用 defineClass来实现的。<br>☆ 而启动类的加载过程是通过调用 loadClass来实现的</p>
+<p>前者称为一个类的定义加载器（defining loader）,后者称为初始加载器（initiating loader）。</p>
+<p>JVM判断两个类是否相同的时候，使用的是类的定义加载器。</p>
+<h4 id="类实例缓存"><a href="#类实例缓存" class="headerlink" title="类实例缓存"></a>类实例缓存</h4><p>类加载器在成功加载某个类之后，会把得到的 java.lang.Class类的实例缓存起来。下次再请求加载该类的时候，类加载器会直接使用缓存的类的实例，而不会尝试再次加载。也就是说，对于一个类加载器实例来说，相同全名的类只加载一次，即 loadClass方法不会被重复调用。</p>
+<p>在JVM中，类型被定义在一个叫 SystemDictionary 的数据结构中，该数据结构接受类加载器和全类名作为参数，返回类型实例。类型加载时，需要传入类加载器和需要加载的全类名，如果在 SystemDictionary 中能够命中一条记录，则返回class 列上对应的类型实例引用，如果无法命中记录，则会调用loader.loadClass(name);进行类型加载。</p>
+<h3 id="ClassLoader的几个关键的方法"><a href="#ClassLoader的几个关键的方法" class="headerlink" title="ClassLoader的几个关键的方法"></a>ClassLoader的几个关键的方法</h3><ul>
+<li><p>findLoadedClass()方法</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// 根据给定的名字,查找被此ClassLoader加载的类(作为initiating loader)。</span><br><span class="line">protected final Class&lt;?&gt; findLoadedClass(String name)</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>findClass()方法</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// 查找名称为 name的类。</span><br><span class="line">protected Class&lt;?&gt; findClass(String name) throws ClassNotFoundException</span><br></pre></td></tr></table></figure>
+<p>这个方法默认是直接抛出ClassNotFoundException。所以应该由子类override这个方法。<br>当loadClass(String name)方法调用，在当前ClassLoader的缓存没有找到，并且其父类加载器也没有找到时，会调用此方法。</p>
+</li>
+<li><p>defineClass()方法<br>这个方法被声明为 final的 ！！</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">protected final Class&lt;?&gt; defineClass(String name, byte[] b, int off, int len)</span><br></pre></td></tr></table></figure>
+<p>这个方法接受一组字节，然后将其具体化为一个Class类型实例，它将文字节传递给JVM，通过JVM（native 方法）对于Class的定义，将其具体化，实例化为一个Class类型实例。</p>
+</li>
+</ul>
 
       
     </div>
@@ -491,8 +516,8 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/2018/05/02/Java_Basic_Reference/" rel="next" title="JAVA的引用">
-                <i class="fa fa-chevron-left"></i> JAVA的引用
+              <a href="/2018/05/05/Java_Basic_Final/" rel="next" title="Java的final关键字">
+                <i class="fa fa-chevron-left"></i> Java的final关键字
               </a>
             
           </div>
@@ -500,6 +525,10 @@
           <span class="post-nav-divider"></span>
 
           <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2018/05/12/Java_Basic_Anotation/" rel="prev" title="Java注解">
+                Java注解 <i class="fa fa-chevron-right"></i>
+              </a>
             
           </div>
         </div>
@@ -564,7 +593,7 @@
                 
                   <a href="/archives/">
                 
-                    <span class="site-state-item-count">14</span>
+                    <span class="site-state-item-count">34</span>
                     <span class="site-state-item-name">日志</span>
                   </a>
                 </div>
@@ -587,7 +616,11 @@
                     
                       
                     
-                    <span class="site-state-item-count">3</span>
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">5</span>
                     <span class="site-state-item-name">分类</span>
                   </a>
                 </div>
@@ -614,7 +647,11 @@
                     
                       
                     
-                    <span class="site-state-item-count">5</span>
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">7</span>
                     <span class="site-state-item-name">标签</span>
                   </a>
                 </div>
@@ -652,7 +689,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#go-方法中的匿名内部类"><span class="nav-number">1.</span> <span class="nav-text">go()方法中的匿名内部类</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#goWithParameter-方法中的匿名内部类"><span class="nav-number">2.</span> <span class="nav-text">goWithParameter()方法中的匿名内部类</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#ClassLoader的原理"><span class="nav-number">1.</span> <span class="nav-text">ClassLoader的原理</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#职责"><span class="nav-number">1.1.</span> <span class="nav-text">职责</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ClassLoader的树状组织结构"><span class="nav-number">1.2.</span> <span class="nav-text">ClassLoader的树状组织结构</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Java-虚拟机是如何判定两个-Java-类是相同的"><span class="nav-number">1.3.</span> <span class="nav-text">Java 虚拟机是如何判定两个 Java 类是相同的</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ClassLoader的委托模型-delegation-model"><span class="nav-number">1.4.</span> <span class="nav-text">ClassLoader的委托模型(delegation model)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#defining-loader-和-initiating-loader"><span class="nav-number">1.5.</span> <span class="nav-text">defining loader 和 initiating loader</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#类实例缓存"><span class="nav-number">1.6.</span> <span class="nav-text">类实例缓存</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ClassLoader的几个关键的方法"><span class="nav-number">2.</span> <span class="nav-text">ClassLoader的几个关键的方法</span></a></li></ol></div>
             
 
           </div>

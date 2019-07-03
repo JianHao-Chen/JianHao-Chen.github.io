@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="本文主要内容 回顾 Selector 的一些基本知识 通过分析JDK源码，分别了解以下3个场景的细节： Selector的创建 Channel注册到Selector Selector选择就绪Channel">
+<meta name="keywords" content="Java,NIO">
+<meta property="og:type" content="article">
+<meta property="og:title" content="NIO的Selector">
+<meta property="og:url" content="http://yoursite.com/2019/05/08/Java_NIO_Selector_Introduce/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="本文主要内容 回顾 Selector 的一些基本知识 通过分析JDK源码，分别了解以下3个场景的细节： Selector的创建 Channel注册到Selector Selector选择就绪Channel">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-07-01T04:17:48.548Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="NIO的Selector">
+<meta name="twitter:description" content="本文主要内容 回顾 Selector 的一些基本知识 通过分析JDK源码，分别了解以下3个场景的细节： Selector的创建 Channel注册到Selector Selector选择就绪Channel">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2019/05/08/Java_NIO_Selector_Introduce/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>NIO的Selector | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/05/08/Java_NIO_Selector_Introduce/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">NIO的Selector
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-05-08 08:55:00" itemprop="dateCreated datePublished" datetime="2019-05-08T08:55:00+08:00">2019-05-08</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-07-01 12:17:48" itemprop="dateModified" datetime="2019-07-01T12:17:48+08:00">2019-07-01</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/NIO/" itemprop="url" rel="index"><span itemprop="name">NIO</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h3 id="本文主要内容"><a href="#本文主要内容" class="headerlink" title="本文主要内容"></a>本文主要内容</h3><ul>
+<li>回顾 Selector 的一些基本知识</li>
+<li>通过分析JDK源码，分别了解以下3个场景的细节：<ul>
+<li>Selector的创建</li>
+<li>Channel注册到Selector</li>
+<li>Selector选择就绪Channel<a id="more"></a>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="Selector的概述"><a href="#Selector的概述" class="headerlink" title="Selector的概述"></a>Selector的概述</h3><h4 id="作用"><a href="#作用" class="headerlink" title="作用"></a>作用</h4><p>SelectableChannel的多路复用器(multiplexor)</p>
+<h4 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h4><ul>
+<li>打开一个 Selector</li>
+<li>将 Channel 注册到 Selector 中, 并设置需要监听的事件(interest set)</li>
+<li>重复以下步骤：<ul>
+<li>调用 select() 方法</li>
+<li>调用 selector.selectedKeys() 获取 selected Keys</li>
+<li>迭代每个 selected Keys:<ul>
+<li>从 selected Keys 中获取对应的 Channel 和附加信息(如果有的话)</li>
+<li>处理就绪的IO事件</li>
+<li>根据需要更改 selected Keys 的监听事件</li>
+<li>将已经处理过的 key 从 selected Keys 集合中删除</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h4 id="关于SelectionKey"><a href="#关于SelectionKey" class="headerlink" title="关于SelectionKey"></a>关于SelectionKey</h4><p><font color="brown"><strong>SelectionKey代表一个 selectable channel 在1个 Selector上的注册</strong></font>。</p>
+<h5 id="一个Selector维护3个SelectionKey的集合"><a href="#一个Selector维护3个SelectionKey的集合" class="headerlink" title="一个Selector维护3个SelectionKey的集合"></a>一个Selector维护3个SelectionKey的集合</h5><ul>
+<li><font color="green"> <strong>registered-key（已注册的键）</strong></font>：<ul>
+<li><font color="orange">与选择器关联的已经注册的键的集合</font>。并不是所有注册过的键都仍然有效。</li>
+<li>这个集合通过<code>keys()</code>方法返回，并且可能是空的。这个已注册的键的集合不是可以直接修改的，试图这么做的话将引<code>java.lang.UnsupportedOperationException</code>。 </li>
+</ul>
+</li>
+<li><font color="green"> <strong>selected-key（已选择的键）</strong></font>： <ul>
+<li>已注册的键的集合的子集，这个集合通过<code>selectedKeys()</code>方法返回（并有可能是空的）</li>
+<li><font color="orange">这个集合的每个成员都是相关的通道被选择器（在前一个选择操作中）判断为已经准备好的，并且包含于键的interest集合中的操作</font>。 </li>
+<li>不要将已选择的键的集合与ready集合弄混了。这是一个键的集合，每个键都关联一个已经准备好至少一种操作的通道。每个键都有一个内嵌的ready集合，指示了所关联的通道已经准备好的操作。</li>
+<li>键可以直接从这个集合中移除，但不能添加。试图向已选择的键的集合中添加元素将抛出<code>java.lang.UnsupportedOperationException</code>。</li>
+</ul>
+</li>
+<li><font color="green"> <strong>cancelled-key（已取消的键）</strong></font>：<ul>
+<li>已注册的键的集合的子集</li>
+<li>这个集合包含了<code>cancel()</code>方法被调用过的键（这个键已经被无效化），但它们还没有被注销 。这个集合是选择器对象的私有成员，因而无法直接访问。</li>
+</ul>
+</li>
+</ul>
+<h5 id="每一个SelectionKey包含2个以整数表示的“operation-set”"><a href="#每一个SelectionKey包含2个以整数表示的“operation-set”" class="headerlink" title="每一个SelectionKey包含2个以整数表示的“operation set”"></a>每一个SelectionKey包含2个以整数表示的“operation set”</h5><ul>
+<li>interest set：表示关心的操作</li>
+<li>ready set ： 表示准备好的操作</li>
+</ul>
+<h4 id="Select操作的流程"><a href="#Select操作的流程" class="headerlink" title="Select操作的流程"></a>Select操作的流程</h4><ul>
+<li>已取消的键的集合将会被检查。如果它是非空的，每个已取消的键的集合中的键将从另外两个集合中移除，并且相关的通道将被注销。这个步骤结束后，已取消的键的集合将是空的。 </li>
+<li><p>已注册的键的集合中的键的interest集合将被检查。在这个步骤中的检查执行过后，对interest集合的改动不会影响剩余的检查过程。 </p>
+<p>一旦就绪条件被定下来，底层操作系统将会进行查询，以确定每个通道所关心的操作的真实就绪状态。依赖于特定的select()方法调用，如果没有通道已经准备好，线程可能会在这时阻塞，通常会有一个超时值。</p>
+<p>直到系统调用完成为止，这个过程可能会使得调用线程睡眠一段时间，然后当前每个通道的就绪状态将确定下来。对于那些还没准备好的通道将不会执行任何的操作。对于那些操作系统指示至少已经准备好interest集合中的一种操作的通道，将执行以下两种操作中的一种：</p>
+<ul>
+<li>如果通道的键还没有处于已选择的键的集合中，那么键的ready集合将被清空，然后表示操作系统发现的当前通道已经准备好的操作的比特掩码将被设置。 </li>
+<li>否则，也就是键在已选择的键的集合中。键的ready集合将被表示操作系统发现的当前已经准备好的操作的比特掩码更新。所有之前的已经不再是就绪状态的操作不会被清除。事实上，所有的比特位都不会被清理。由操作系统决定的ready集合是与之前的ready集合按位分离的，一旦键被放置于选择器的已选择的键的集合中，它的ready集合将是累积的。比特位只会被设置，不会被清理。</li>
+</ul>
+</li>
+<li><p>步骤2可能会花费很长时间，特别是所激发的线程处于休眠状态时。与该选择器相关的键可能会同时被取消。当步骤2结束时，步骤1将重新执行，以完成任意一个在选择进行的过程中，键已经被取消的通道的注销。</p>
+</li>
+<li>select操作返回的值是<font color="cyan"><strong>ready集合在步骤2中被修改的键的数量，而不是已选择的键的集合中的通道的总数</strong></font>。返回值不是已准备好的通道的总数，而是从上一个select( )调用之后进入就绪状态的通道的数量。之前的调用中就绪的，并且在本次调用中仍然就绪的通道不会被计入，而那些在前一次调用中已经就绪但已经不再处于就绪状态的通道也不会被计入。这些通道可能仍然在已选择的键的集合中，但不会被计入返回值中。返回值可能是0。（含义是：我们不能只依赖这个值）</li>
+</ul>
+<h3 id="Selector的代码分析"><a href="#Selector的代码分析" class="headerlink" title="Selector的代码分析"></a>Selector的代码分析</h3><h4 id="创建选择器"><a href="#创建选择器" class="headerlink" title="创建选择器"></a>创建选择器</h4><p>我们通过调用<code>Selector::open()</code>方法，创建选择器。这个方法里面的逻辑如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line">// 1. Selector::open 通过使用SelectorProvider创建选择器，</span><br><span class="line">//    这个是平台相关的</span><br><span class="line">public static Selector open() throws IOException &#123;</span><br><span class="line">    return SelectorProvider.provider().openSelector();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// 2. 使用 DefaultSelectorProvider</span><br><span class="line">public static SelectorProvider provider() &#123;</span><br><span class="line">    // ... 省略</span><br><span class="line">    provider = sun.nio.ch.DefaultSelectorProvider.create();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">// 3. 创建 SelectorProvider 的操作在这个方法里。（Linux环境）</span><br><span class="line">//    如果Linux版本 &gt;= 2.6 ，就使用 EPollSelectorProvider</span><br><span class="line">//    如果Linux版本 &lt;  2.6 ，就使用 PollSelectorProvider</span><br><span class="line">public static SelectorProvider create() &#123;</span><br><span class="line">    // ... 省略</span><br><span class="line">    </span><br><span class="line">    // use EPollSelectorProvider for Linux kernels &gt;= 2.6</span><br><span class="line">    if (&quot;Linux&quot;.equals(osname)) &#123;</span><br><span class="line">        String osversion = AccessController.doPrivileged(</span><br><span class="line">            new GetPropertyAction(&quot;os.version&quot;));</span><br><span class="line">        String[] vers = osversion.split(&quot;\\.&quot;, 0);</span><br><span class="line">        if (vers.length &gt;= 2) &#123;</span><br><span class="line">            try &#123;</span><br><span class="line">                int major = Integer.parseInt(vers[0]);</span><br><span class="line">                int minor = Integer.parseInt(vers[1]);</span><br><span class="line">                if (major &gt; 2 || (major == 2 &amp;&amp; minor &gt;= 6)) &#123;</span><br><span class="line">                    return new sun.nio.ch.EPollSelectorProvider();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; catch (NumberFormatException x) &#123;</span><br><span class="line">                // format not recognized</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    return new sun.nio.ch.PollSelectorProvider();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">// 4.1 对于 PollSelectorProvider，它的openSelector()方法</span><br><span class="line">public AbstractSelector openSelector() throws IOException &#123;</span><br><span class="line">    return new PollSelectorImpl(this);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">// 4.2 对于 EPollSelectorProvider，它的openSelector()方法</span><br><span class="line">public AbstractSelector openSelector() throws IOException &#123;</span><br><span class="line">    return new EPollSelectorImpl(this);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h4 id="将-Channel-注册到选择器"><a href="#将-Channel-注册到选择器" class="headerlink" title="将 Channel 注册到选择器"></a>将 Channel 注册到选择器</h4><p>一般的用法是：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">channel.configureBlocking(false);</span><br><span class="line">SelectionKey key = channel.register(selector, SelectionKey.OP_READ);</span><br></pre></td></tr></table></figure></p>
+<h5 id="AbstractSelectableChannel的register方法："><a href="#AbstractSelectableChannel的register方法：" class="headerlink" title="AbstractSelectableChannel的register方法："></a>AbstractSelectableChannel的register方法：</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">public final SelectionKey register(Selector sel, int ops,</span><br><span class="line">                                   Object att)</span><br><span class="line">    throws ClosedChannelException</span><br><span class="line">&#123;</span><br><span class="line">    synchronized (regLock) &#123;</span><br><span class="line">        if (!isOpen())</span><br><span class="line">            throw new ClosedChannelException();</span><br><span class="line">        if ((ops &amp; ~validOps()) != 0)</span><br><span class="line">            throw new IllegalArgumentException();</span><br><span class="line">        if (blocking)</span><br><span class="line">            throw new IllegalBlockingModeException();</span><br><span class="line">        SelectionKey k = findKey(sel);</span><br><span class="line">        if (k != null) &#123;</span><br><span class="line">            k.interestOps(ops);</span><br><span class="line">            k.attach(att);</span><br><span class="line">        &#125;</span><br><span class="line">        if (k == null) &#123;</span><br><span class="line">            // New registration</span><br><span class="line">            synchronized (keyLock) &#123;</span><br><span class="line">                if (!isOpen())</span><br><span class="line">                    throw new ClosedChannelException();</span><br><span class="line">                k = ((AbstractSelector)sel).register(this, ops, att);</span><br><span class="line">                addKey(k);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        return k;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面代码的逻辑如下：</p>
+<ol>
+<li>检查 channel是否关闭，设置的ops(channel的关心事件)是否合法</li>
+<li>如果当前 channel已经在给定的selector注册了，那么获取对应的SelectionKey, 设置ops</li>
+<li>如果当前 channel没有注册，就调用selector的register方法，然后在channel的SelectionKey[]数组添加新的SelectionKey</li>
+</ol>
+<h5 id="Selector的register方法"><a href="#Selector的register方法" class="headerlink" title="Selector的register方法"></a>Selector的register方法</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line">// 1. 在 SelectorImpl.java 的 register方法</span><br><span class="line">protected final SelectionKey register(AbstractSelectableChannel ch,</span><br><span class="line">                                          int ops,</span><br><span class="line">                                          Object attachment)</span><br><span class="line">&#123;</span><br><span class="line">    if (!(ch instanceof SelChImpl))</span><br><span class="line">        throw new IllegalSelectorException();</span><br><span class="line">    SelectionKeyImpl k = new SelectionKeyImpl((SelChImpl)ch, this);</span><br><span class="line">    k.attach(attachment);</span><br><span class="line">    synchronized (publicKeys) &#123;</span><br><span class="line">        implRegister(k);</span><br><span class="line">    &#125;</span><br><span class="line">    k.interestOps(ops);             // 看第3点 “SelectionKeyImpl的interestOps方法”</span><br><span class="line">    return k;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">// 2. 在 AbstractPollSelectorImpl.java 的 implRegister方法</span><br><span class="line">protected void implRegister(SelectionKeyImpl ski) &#123;</span><br><span class="line">    synchronized (closeLock) &#123;</span><br><span class="line">        if (closed)</span><br><span class="line">            throw new ClosedSelectorException();</span><br><span class="line">        // Check to see if the array is large enough</span><br><span class="line">        if (channelArray.length == totalChannels) &#123;</span><br><span class="line">            // Make a larger array</span><br><span class="line">            int newSize = pollWrapper.totalChannels * 2;</span><br><span class="line">            SelectionKeyImpl temp[] = new SelectionKeyImpl[newSize];</span><br><span class="line">            // Copy over</span><br><span class="line">            for (int i=channelOffset; i&lt;totalChannels; i++)</span><br><span class="line">                temp[i] = channelArray[i];</span><br><span class="line">            channelArray = temp;</span><br><span class="line">            // Grow the NativeObject poll array</span><br><span class="line">            pollWrapper.grow(newSize);</span><br><span class="line">        &#125;</span><br><span class="line">        channelArray[totalChannels] = ski;</span><br><span class="line">        ski.setIndex(totalChannels);</span><br><span class="line">        pollWrapper.addEntry(ski.channel);</span><br><span class="line">        totalChannels++;</span><br><span class="line">        keys.add(ski);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h5 id="SelectionKeyImpl的interestOps方法"><a href="#SelectionKeyImpl的interestOps方法" class="headerlink" title="SelectionKeyImpl的interestOps方法"></a>SelectionKeyImpl的interestOps方法</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">public SelectionKey interestOps(int ops) &#123;</span><br><span class="line">    ensureValid();                  // 表示这个 SelectionKey 还没有被 cancel</span><br><span class="line">    return nioInterestOps(ops);     </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">SelectionKey nioInterestOps(int ops) &#123;      // package-private</span><br><span class="line">    if ((ops &amp; ~channel().validOps()) != 0)</span><br><span class="line">        throw new IllegalArgumentException();</span><br><span class="line">    channel.translateAndSetInterestOps(ops, this);</span><br><span class="line">    interestOps = ops;</span><br><span class="line">    return this;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>继续看 <code>channel.translateAndSetInterestOps()</code>，这方法是根据 channel 而不一样的。下面以 <code>SocketChannelImpl</code>的实现为例：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * Translates an interest operation set into a native poll event set</span><br><span class="line"> */</span><br><span class="line">public void translateAndSetInterestOps(int ops, SelectionKeyImpl sk) &#123;</span><br><span class="line">    int newOps = 0;</span><br><span class="line">    if ((ops &amp; SelectionKey.OP_READ) != 0)</span><br><span class="line">        newOps |= PollArrayWrapper.POLLIN;</span><br><span class="line">    if ((ops &amp; SelectionKey.OP_WRITE) != 0)</span><br><span class="line">        newOps |= PollArrayWrapper.POLLOUT;</span><br><span class="line">    if ((ops &amp; SelectionKey.OP_CONNECT) != 0)</span><br><span class="line">        newOps |= PollArrayWrapper.POLLCONN;</span><br><span class="line">    sk.selector.putEventOps(sk, newOps);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>这个方法做了2件事：</p>
+<ul>
+<li>将 SelectionKey的事件转换为 PollArrayWrapper 定义的事件，POLLIN、POLLOUT的值，和定义在 poll.h 文件的变量是一样的。</li>
+<li>调用 selector 的 <code>putEventOps</code>方法，调用了<code>pollWrapper::putEventOps</code>方法，它就是设置“pollfd” 数据结构的值</li>
+</ul>
+<h5 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h5><p>将 Channel 注册到选择器，做了2步：</p>
+<ul>
+<li>创建了 SelectionKey（设置好 interestOps ），然后 channel和selector都保存好 SelectionKey。</li>
+<li>通过 pollWrapper 设置数据结构 “pollfd”</li>
+</ul>
+<h4 id="Selector-选择就绪Channel"><a href="#Selector-选择就绪Channel" class="headerlink" title="Selector 选择就绪Channel"></a>Selector 选择就绪Channel</h4><p>使用如下方法:<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">int n = selector.select();</span><br></pre></td></tr></table></figure></p>
+<ul>
+<li>这个方法是阻塞的，当且仅当以下情况才会返回：<ul>
+<li>至少1个channel就绪</li>
+<li>这个 selector 的 <code>wakeup</code> 方法被调用</li>
+<li>当前线程被中断</li>
+</ul>
+</li>
+<li>这个方法的返回值表示：SelectionKey的数量（它们的ready-operation set被更新）</li>
+</ul>
+<h5 id="pollSelectorImpl的doSelect方法"><a href="#pollSelectorImpl的doSelect方法" class="headerlink" title="pollSelectorImpl的doSelect方法"></a>pollSelectorImpl的doSelect方法</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">protected int doSelect(long timeout)</span><br><span class="line">        throws IOException</span><br><span class="line">&#123;</span><br><span class="line">    if (channelArray == null)</span><br><span class="line">        throw new ClosedSelectorException();</span><br><span class="line">    processDeregisterQueue();</span><br><span class="line">    try &#123;</span><br><span class="line">        begin();</span><br><span class="line">        pollWrapper.poll(totalChannels, 0, timeout);</span><br><span class="line">    &#125; finally &#123;</span><br><span class="line">        end();</span><br><span class="line">    &#125;</span><br><span class="line">    processDeregisterQueue();</span><br><span class="line">    int numKeysUpdated = updateSelectedKeys();</span><br><span class="line">    if (pollWrapper.getReventOps(0) != 0) &#123;</span><br><span class="line">        // Clear the wakeup pipe</span><br><span class="line">        pollWrapper.putReventOps(0, 0);</span><br><span class="line">        synchronized (interruptLock) &#123;</span><br><span class="line">            IOUtil.drain(fd0);</span><br><span class="line">            interruptTriggered = false;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    return numKeysUpdated;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面代码做的是以下4件事：</p>
+<ul>
+<li>调用方法<code>processDeregisterQueue()</code>，处理注销的SelectionKey</li>
+<li>调用 pollWrapper的<code>poll</code>方法，它会调用 native 方法<code>poll0</code></li>
+<li>调用 <code>updateSelectedKeys</code>方法，从 pollfd 获取 revents 并转化、设置到对应的SelectedKey里面</li>
+<li>检查这个 selector 的 wakeup 管道，如果有数据， 就把它“排干”，并且重置 pollfd 的 revents。</li>
+</ul>
+<p>下面将分别通过代码分析这几步。</p>
+<h5 id="processDeregisterQueue"><a href="#processDeregisterQueue" class="headerlink" title="processDeregisterQueue"></a>processDeregisterQueue</h5><p>这个方法在 <strong><em>SelectorImpl.java</em></strong> ：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">void processDeregisterQueue() throws IOException &#123;</span><br><span class="line">    // Precondition: Synchronized on this, keys, and selectedKeys</span><br><span class="line">    Set cks = cancelledKeys();</span><br><span class="line">    synchronized (cks) &#123;</span><br><span class="line">        if (!cks.isEmpty()) &#123;</span><br><span class="line">            Iterator i = cks.iterator();</span><br><span class="line">            while (i.hasNext()) &#123;</span><br><span class="line">                SelectionKeyImpl ski = (SelectionKeyImpl)i.next();</span><br><span class="line">                try &#123;</span><br><span class="line">                    implDereg(ski);</span><br><span class="line">                &#125; catch (SocketException se) &#123;</span><br><span class="line">                    IOException ioe = new IOException(</span><br><span class="line">                        &quot;Error deregistering key&quot;);</span><br><span class="line">                    ioe.initCause(se);</span><br><span class="line">                    throw ioe;</span><br><span class="line">                &#125; finally &#123;</span><br><span class="line">                    i.remove();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>上面方法做的是：遍历 cancelledKeys集合，对于每一个元素（SelectionKeyImpl），使用方法 <code>implDereg</code>执行注销逻辑。这个方法在 <strong><em>AbstractPollSelectorImpl.java</em></strong> ：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">// The list of SelectableChannels serviced by this Selector</span><br><span class="line">protected SelectionKeyImpl[] channelArray;</span><br><span class="line"></span><br><span class="line">// The number of valid channels in this Selector&apos;s poll array</span><br><span class="line">protected int totalChannels;</span><br><span class="line"></span><br><span class="line">protected void implDereg(SelectionKeyImpl ski) throws IOException &#123;</span><br><span class="line">    // Algorithm: Copy the sc from the end of the list and put it into</span><br><span class="line">    // the location of the sc to be removed (since order doesn&apos;t</span><br><span class="line">    // matter). Decrement the sc count. Update the index of the sc</span><br><span class="line">    // that is moved.</span><br><span class="line">    int i = ski.getIndex();</span><br><span class="line">    assert (i &gt;= 0);</span><br><span class="line">    if (i != totalChannels - 1) &#123;</span><br><span class="line">        // Copy end one over it</span><br><span class="line">        SelectionKeyImpl endChannel = channelArray[totalChannels-1];</span><br><span class="line">        channelArray[i] = endChannel;</span><br><span class="line">        endChannel.setIndex(i);</span><br><span class="line">        pollWrapper.release(i);</span><br><span class="line">        PollArrayWrapper.replaceEntry(pollWrapper, totalChannels - 1,</span><br><span class="line">                                      pollWrapper, i);</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        pollWrapper.release(i);</span><br><span class="line">    &#125;</span><br><span class="line">    // Destroy the last one</span><br><span class="line">    channelArray[totalChannels-1] = null;</span><br><span class="line">    totalChannels--;</span><br><span class="line">    pollWrapper.totalChannels--;</span><br><span class="line">    ski.setIndex(-1);</span><br><span class="line">    // Remove the key from keys and selectedKeys</span><br><span class="line">    keys.remove(ski);</span><br><span class="line">    selectedKeys.remove(ski);</span><br><span class="line">    deregister((AbstractSelectionKey)ski);</span><br><span class="line">    SelectableChannel selch = ski.channel();</span><br><span class="line">    if (!selch.isOpen() &amp;&amp; !selch.isRegistered())</span><br><span class="line">        ((SelChImpl)selch).kill();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>上面方法的解析：</p>
+<ul>
+<li>在这个 SelectorImpl 内部，保存了成员变量channelArray（SelectionKeyImpl[]）</li>
+<li>这个方法执行的是 selector对SelectionKey的注销，包括删除channelArray中的元素、同步到 pollWrapper</li>
+<li>还有是调用 deregister方法，它调用这个 SelectionKey对应的 Channel的 removeKey方法，也是删除 Channel保存的SelectionKey、keyCount 减1。</li>
+<li>检查 Channel，如果已关闭并且没有注册到任何selector上（即keyCount == 0），那么使用 Channel 的 kill方法。</li>
+</ul>
+<p>【联系】<br> 这里 Channel 的 kill方法，调用了 NativeDispatcher 的 close方法，<font color="orange"><strong>为了避免多个线程下共享的fd的关闭释放而导致某些线程可能读写“旧”fd的问题，java nio的实现采用了two-step的关闭</strong></font>，具体内容在《InterruptibleChannel的close方法》。</p>
+<h5 id="poll0的实现"><a href="#poll0的实现" class="headerlink" title="poll0的实现"></a>poll0的实现</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">JNIEXPORT jint JNICALL</span><br><span class="line">Java_sun_nio_ch_PollArrayWrapper_poll0(JNIEnv *env, jobject this,</span><br><span class="line">                                       jlong address, jint numfds,</span><br><span class="line">                                       jlong timeout)</span><br><span class="line">&#123;</span><br><span class="line">    struct pollfd *a;</span><br><span class="line">    int err = 0;</span><br><span class="line"></span><br><span class="line">    a = (struct pollfd *) jlong_to_ptr(address);</span><br><span class="line"></span><br><span class="line">    if (timeout &lt;= 0) &#123;           /* Indefinite or no wait */</span><br><span class="line">        RESTARTABLE (poll(a, numfds, timeout), err);</span><br><span class="line">    &#125; else &#123;                     /* Bounded wait; bounded restarts */</span><br><span class="line">        err = ipoll(a, numfds, timeout);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    if (err &lt; 0) &#123;</span><br><span class="line">        JNU_ThrowIOExceptionWithLastError(env, &quot;Poll failed&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">    return (jint)err;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面代码本质就是调用 poll 系统调用。根据 timeout的值，有2种情况：</p>
+<ul>
+<li>如果 timeout &lt;= 0， 就使用 宏定义 RESTARTABLE，死循环调用 poll，忽略它的EINTR</li>
+<li>如果 timeout &gt; 0，调用方法 ipoll，它与RESTARTABLE相比，多了超时计算。</li>
+</ul>
+<h5 id="updateSelectedKeys-的实现"><a href="#updateSelectedKeys-的实现" class="headerlink" title="updateSelectedKeys 的实现"></a>updateSelectedKeys 的实现</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * Copy the information in the pollfd structs into the opss</span><br><span class="line"> * of the corresponding Channels. Add the ready keys to the</span><br><span class="line"> * ready queue.</span><br><span class="line"> */</span><br><span class="line">protected int updateSelectedKeys() &#123;</span><br><span class="line">    int numKeysUpdated = 0;</span><br><span class="line">    // Skip zeroth entry; it is for interrupts only</span><br><span class="line">    for (int i=channelOffset; i&lt;totalChannels; i++) &#123;</span><br><span class="line">        int rOps = pollWrapper.getReventOps(i);</span><br><span class="line">        if (rOps != 0) &#123;</span><br><span class="line">            SelectionKeyImpl sk = channelArray[i];</span><br><span class="line">            pollWrapper.putReventOps(i, 0);</span><br><span class="line">            if (selectedKeys.contains(sk)) &#123;</span><br><span class="line">                if (sk.channel.translateAndSetReadyOps(rOps, sk)) &#123;</span><br><span class="line">                    numKeysUpdated++;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">                sk.channel.translateAndSetReadyOps(rOps, sk);</span><br><span class="line">                if ((sk.nioReadyOps() &amp; sk.nioInterestOps()) != 0) &#123;</span><br><span class="line">                    selectedKeys.add(sk);</span><br><span class="line">                    numKeysUpdated++;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    return numKeysUpdated;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这个方法就是执行 poll 之后，从 pollfd 中取出 revents，设置到 SelectionKey，具体步骤如下：</p>
+<ul>
+<li>通过 pollWrapper 取出 第 i 个 channel 的 revent。如果 revent == 0，处理下一个channel 的 revent</li>
+<li>重置这个 pollfd 的 revents 为0， 取出对应的 SelectionKey 对象</li>
+<li>调用<code>translateAndSetReadyOps</code>方法，将对应的“<strong>已准备ops</strong>”设置到 SelectionKey</li>
+<li>如果这个 SelectionKey 不在 selectedKey 集合，还要添加 这个 SelectionKey到selectedKey 集合。</li>
+</ul>
+<h5 id="小结-1"><a href="#小结-1" class="headerlink" title="小结"></a>小结</h5><p>Select操作（以 pollSelectorImpl 为例，通过系统调用 poll 实现），做了以下几件事：</p>
+<ul>
+<li>遍历处理 canceledKey-set</li>
+<li>通过系统调用 poll，确定每个通道关心的操作的就绪状态。</li>
+<li>将 poll 的结果同步到 SelectedKey。</li>
+<li>返回 SelectedKey 被更新的数量</li>
+</ul>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Java/" rel="tag"># Java</a>
+          
+            <a href="/tags/NIO/" rel="tag"># NIO</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/04/05/Reactor/" rel="next" title="Reactor模型">
+                <i class="fa fa-chevron-left"></i> Reactor模型
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/05/09/Java_NIO_Channel_Close/" rel="prev" title="InterruptibleChannel的close方法">
+                InterruptibleChannel的close方法 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">34</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">5</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">7</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#本文主要内容"><span class="nav-number">1.</span> <span class="nav-text">本文主要内容</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Selector的概述"><span class="nav-number">2.</span> <span class="nav-text">Selector的概述</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#作用"><span class="nav-number">2.1.</span> <span class="nav-text">作用</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#流程"><span class="nav-number">2.2.</span> <span class="nav-text">流程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#关于SelectionKey"><span class="nav-number">2.3.</span> <span class="nav-text">关于SelectionKey</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#一个Selector维护3个SelectionKey的集合"><span class="nav-number">2.3.1.</span> <span class="nav-text">一个Selector维护3个SelectionKey的集合</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#每一个SelectionKey包含2个以整数表示的“operation-set”"><span class="nav-number">2.3.2.</span> <span class="nav-text">每一个SelectionKey包含2个以整数表示的“operation set”</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Select操作的流程"><span class="nav-number">2.4.</span> <span class="nav-text">Select操作的流程</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Selector的代码分析"><span class="nav-number">3.</span> <span class="nav-text">Selector的代码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#创建选择器"><span class="nav-number">3.1.</span> <span class="nav-text">创建选择器</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#将-Channel-注册到选择器"><span class="nav-number">3.2.</span> <span class="nav-text">将 Channel 注册到选择器</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#AbstractSelectableChannel的register方法："><span class="nav-number">3.2.1.</span> <span class="nav-text">AbstractSelectableChannel的register方法：</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#Selector的register方法"><span class="nav-number">3.2.2.</span> <span class="nav-text">Selector的register方法</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#SelectionKeyImpl的interestOps方法"><span class="nav-number">3.2.3.</span> <span class="nav-text">SelectionKeyImpl的interestOps方法</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#小结"><span class="nav-number">3.2.4.</span> <span class="nav-text">小结</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Selector-选择就绪Channel"><span class="nav-number">3.3.</span> <span class="nav-text">Selector 选择就绪Channel</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#pollSelectorImpl的doSelect方法"><span class="nav-number">3.3.1.</span> <span class="nav-text">pollSelectorImpl的doSelect方法</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#processDeregisterQueue"><span class="nav-number">3.3.2.</span> <span class="nav-text">processDeregisterQueue</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#poll0的实现"><span class="nav-number">3.3.3.</span> <span class="nav-text">poll0的实现</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#updateSelectedKeys-的实现"><span class="nav-number">3.3.4.</span> <span class="nav-text">updateSelectedKeys 的实现</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#小结-1"><span class="nav-number">3.3.5.</span> <span class="nav-text">小结</span></a></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

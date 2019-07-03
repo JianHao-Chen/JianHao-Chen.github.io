@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="本文首先展示一个比较简单的Java注解例子，然后分析这个注解的一些字节码。">
+<meta name="keywords" content="IO,Java">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Java注解">
+<meta property="og:url" content="http://yoursite.com/2018/05/12/Java_Basic_Anotation/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="本文首先展示一个比较简单的Java注解例子，然后分析这个注解的一些字节码。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-05-11T14:35:48.542Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Java注解">
+<meta name="twitter:description" content="本文首先展示一个比较简单的Java注解例子，然后分析这个注解的一些字节码。">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2018/05/12/Java_Basic_Anotation/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Java注解 | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/05/12/Java_Basic_Anotation/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Java注解
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2018-05-12 08:55:00" itemprop="dateCreated datePublished" datetime="2018-05-12T08:55:00+08:00">2018-05-12</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-05-11 22:35:48" itemprop="dateModified" datetime="2019-05-11T22:35:48+08:00">2019-05-11</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/" itemprop="url" rel="index"><span itemprop="name">基础</span></a></span>
+
+                
+                
+                  ，
+                
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/Java/" itemprop="url" rel="index"><span itemprop="name">Java</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>本文首先展示一个比较简单的Java注解例子，然后分析这个注解的一些字节码。<br><a id="more"></a></p>
+<h3 id="注解的示例"><a href="#注解的示例" class="headerlink" title="注解的示例"></a>注解的示例</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br></pre></td><td class="code"><pre><span class="line">// MyTag注解</span><br><span class="line">@Retention(RetentionPolicy.RUNTIME)</span><br><span class="line">@Target(ElementType.METHOD)</span><br><span class="line">public @interface MyTag &#123;</span><br><span class="line"></span><br><span class="line">  public enum LightStatus &#123;ON , OFF&#125;</span><br><span class="line">  LightStatus Light() default LightStatus.OFF;</span><br><span class="line">  </span><br><span class="line">  String name() default &quot;default_name&quot;;</span><br><span class="line">  int age() default 18;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">public class Demo &#123;</span><br><span class="line"></span><br><span class="line">  public static void m1() &#123;&#125;</span><br><span class="line">  </span><br><span class="line">  @MyTag</span><br><span class="line">  public static void m2() &#123;&#125;</span><br><span class="line">  </span><br><span class="line">  @MyTag(name = &quot;A&quot;)</span><br><span class="line">  public static void m3() &#123;&#125;</span><br><span class="line">  </span><br><span class="line">  @MyTag(name = &quot;B&quot;, age = 30)</span><br><span class="line">  public static void m4() &#123;&#125;</span><br><span class="line">  </span><br><span class="line">  @MyTag(name = &quot;C&quot;, age = 40, Light=LightStatus.ON)</span><br><span class="line">  public static void m5() &#123;&#125;</span><br><span class="line">  </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">// Util类</span><br><span class="line">public class Util &#123;</span><br><span class="line"></span><br><span class="line">  public static void process(String clazz)&#123;</span><br><span class="line">    Class targetClass = null;</span><br><span class="line">    </span><br><span class="line">    try &#123;</span><br><span class="line">      targetClass = Class.forName(clazz);</span><br><span class="line">    &#125;</span><br><span class="line">    catch (ClassNotFoundException e) &#123;</span><br><span class="line">      e.printStackTrace();</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    for (Method m : targetClass.getMethods()) </span><br><span class="line">      if (m.isAnnotationPresent(MyTag.class)) &#123;</span><br><span class="line">        MyTag tag = m.getAnnotation(MyTag.class);</span><br><span class="line">        System.out.println(&quot;方法&quot; + m.getName() + &quot;的MyTag注解内容为：&quot; + tag.name() + &quot;，&quot; + tag.age()+&quot;，&quot;+tag.Light());</span><br><span class="line">      &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>运行Util的process()方法分析Demo的注解，得到结果:<br>方法m2的MyTag注解内容为：default_name，18，OFF<br>方法m3的MyTag注解内容为：A，18，OFF<br>方法m4的MyTag注解内容为：B，30，OFF<br>方法m5的MyTag注解内容为：C，40，ON</p>
+<h3 id="相关的字节码"><a href="#相关的字节码" class="headerlink" title="相关的字节码"></a>相关的字节码</h3><p>将会省略部分字节码。</p>
+<h4 id="MyTag"><a href="#MyTag" class="headerlink" title="MyTag"></a>MyTag</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line">public interface MyTag extends java.lang.annotation.Annotation</span><br><span class="line"></span><br><span class="line">  // 这是对于MyTag这个类的flag</span><br><span class="line">  flags: ACC_PUBLIC, ACC_INTERFACE, ACC_ABSTRACT, ACC_ANNOTATION</span><br><span class="line">  </span><br><span class="line">  Constant pool:</span><br><span class="line">    ...</span><br><span class="line">    #10 = Utf8               default_name</span><br><span class="line">    ...</span><br><span class="line">    #13 = Integer            18</span><br><span class="line">    ...</span><br><span class="line">    #16 = Utf8               LMyTag$LightStatus;</span><br><span class="line">    #17 = Utf8               OFF</span><br><span class="line">    ...</span><br><span class="line">    #21 = Utf8               Ljava/lang/annotation/Retention;</span><br><span class="line">    #22 = Utf8               value</span><br><span class="line">    #23 = Utf8               Ljava/lang/annotation/RetentionPolicy;</span><br><span class="line">    #24 = Utf8               RUNTIME</span><br><span class="line">    #25 = Utf8               Ljava/lang/annotation/Target;</span><br><span class="line">    #26 = Utf8               Ljava/lang/annotation/ElementType;</span><br><span class="line">    #27 = Utf8               METHOD</span><br><span class="line">    #28 = Utf8               InnerClasses</span><br><span class="line">    #29 = Class              #30    // jvm/annotation/MyTag$LightStatus</span><br><span class="line">    #30 = Utf8               jvm/annotation/MyTag$LightStatus</span><br><span class="line">    #31 = Utf8               LightStatus</span><br><span class="line">  </span><br><span class="line">  public abstract java.lang.String name();</span><br><span class="line">    descriptor: ()Ljava/lang/String;</span><br><span class="line">    flags: ACC_PUBLIC, ACC_ABSTRACT</span><br><span class="line">    AnnotationDefault: default_value: s#10  //即“default_name”</span><br><span class="line"></span><br><span class="line">  public abstract int age();</span><br><span class="line">    descriptor: ()I</span><br><span class="line">    flags: ACC_PUBLIC, ACC_ABSTRACT</span><br><span class="line">    AnnotationDefault: default_value: I#13  //即 18</span><br><span class="line">      </span><br><span class="line">  public abstract MyTag$LightStatus Light();</span><br><span class="line">    descriptor: ()LMyTag$LightStatus;</span><br><span class="line">    flags: ACC_PUBLIC, ACC_ABSTRACT</span><br><span class="line">    AnnotationDefault:</span><br><span class="line">      default_value: e#16.#17&#125;            // 即 MyTag$LightStatus.OFF</span><br><span class="line"></span><br><span class="line">  RuntimeVisibleAnnotations:</span><br><span class="line">    0: #21(#22=e#23.#24)      // Retention(value=RetentionPolicy.RUNTIME)</span><br><span class="line">    1: #25(#22=[e#26.#27])    // Target(ElementType.METHOD)</span><br><span class="line">  </span><br><span class="line">  InnerClasses:</span><br><span class="line">     public static final #31= #29 of #1; //LightStatus=class MyTag$LightStatus of class MyTag</span><br></pre></td></tr></table></figure>
+<h4 id="Demo"><a href="#Demo" class="headerlink" title="Demo"></a>Demo</h4><p>我们只关注Demo的各个方法的字节码。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line">/* m1()方法没有加注解，列出来仅仅为了和其他方法对比 */</span><br><span class="line">public static void m1();</span><br><span class="line">  descriptor: ()V</span><br><span class="line">  flags: ACC_PUBLIC, ACC_STATIC</span><br><span class="line">  Code:</span><br><span class="line">    ... //Code部分省略</span><br><span class="line">      </span><br><span class="line">/* m2()方法加注解 “@MyTag” */      </span><br><span class="line">public static void m2();</span><br><span class="line">  descriptor: ()V</span><br><span class="line">  flags: ACC_PUBLIC, ACC_STATIC</span><br><span class="line">  RuntimeVisibleAnnotations:</span><br><span class="line">    0: #17()                        //即 MyTag;</span><br><span class="line">  Code:</span><br><span class="line">    ... //Code部分省略    </span><br><span class="line"></span><br><span class="line">/* m3()方法加注解 “@MyTag(name = &quot;A&quot;)” */   </span><br><span class="line"> public static void m3();</span><br><span class="line">  descriptor: ()V</span><br><span class="line">  flags: ACC_PUBLIC, ACC_STATIC</span><br><span class="line">  RuntimeVisibleAnnotations:</span><br><span class="line">    0: #17(#19=s#20)              //即 MyTag(name=&quot;A&quot;)</span><br><span class="line">  Code:</span><br><span class="line">    ... //Code部分省略  </span><br><span class="line"></span><br><span class="line">/* m4()方法加注解 “@MyTag(name = &quot;B&quot;, age = 30)” */         </span><br><span class="line">public static void m4();</span><br><span class="line">  descriptor: ()V</span><br><span class="line">  flags: ACC_PUBLIC, ACC_STATIC</span><br><span class="line">  RuntimeVisibleAnnotations:</span><br><span class="line">    0: #17(#19=s#22,#23=I#24)      // 即 MyTag(name=&quot;B&quot; , age=30)</span><br><span class="line">  Code:</span><br><span class="line">      ... //Code部分省略       </span><br><span class="line">  </span><br><span class="line">/* m5()方法加注解 “@MyTag(name = &quot;C&quot;, age = 40, Light=LightStatus.ON)” */            </span><br><span class="line">public static void m5();</span><br><span class="line">  descriptor: ()V</span><br><span class="line">  flags: ACC_PUBLIC, ACC_STATIC</span><br><span class="line">  RuntimeVisibleAnnotations:</span><br><span class="line">    0: #17(#19=s#26,#23=I#27,#28=e#29.#30)  // 即 MyTag(name=&quot;C&quot; , age=40 , Light=MyTag$LightStatus.ON)</span><br><span class="line">  Code:</span><br><span class="line">    ... //Code部分省略</span><br></pre></td></tr></table></figure></p>
+<p>不难理解，这里方法与注解的联系就在 RuntimeVisibleAnnotations 这个属性上面。</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/IO/" rel="tag"># IO</a>
+          
+            <a href="/tags/Java/" rel="tag"># Java</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2018/05/07/Java_Basic_ClassLoader/" rel="next" title="ClassLoader的原理和API">
+                <i class="fa fa-chevron-left"></i> ClassLoader的原理和API
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2018/05/12/Java_Basic_ClassNotFoundException_NoClassDefFoundError/" rel="prev" title="ClassNotFoundException和NoClassDefFoundError的区别">
+                ClassNotFoundException和NoClassDefFoundError的区别 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">34</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">5</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">7</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#注解的示例"><span class="nav-number">1.</span> <span class="nav-text">注解的示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#相关的字节码"><span class="nav-number">2.</span> <span class="nav-text">相关的字节码</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#MyTag"><span class="nav-number">2.1.</span> <span class="nav-text">MyTag</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Demo"><span class="nav-number">2.2.</span> <span class="nav-text">Demo</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

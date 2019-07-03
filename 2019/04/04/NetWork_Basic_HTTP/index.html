@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="本文简单介绍HTTP协议。">
+<meta name="keywords" content="网络">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HTTP简介">
+<meta property="og:url" content="http://yoursite.com/2019/04/04/NetWork_Basic_HTTP/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="本文简单介绍HTTP协议。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/NetWork_Basic/HTTP/1.png">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/NetWork_Basic/HTTP/2.png">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/NetWork_Basic/HTTP/3.png">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/NetWork_Basic/HTTP/4.png">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/NetWork_Basic/HTTP/5.png">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/NetWork_Basic/HTTP/6.png">
+<meta property="og:updated_time" content="2019-06-18T10:35:08.724Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="HTTP简介">
+<meta name="twitter:description" content="本文简单介绍HTTP协议。">
+<meta name="twitter:image" content="http://yoursite.com/assets/blogImg/NetWork_Basic/HTTP/1.png">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2019/04/04/NetWork_Basic_HTTP/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>HTTP简介 | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/04/04/NetWork_Basic_HTTP/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">HTTP简介
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-04-04 08:55:00" itemprop="dateCreated datePublished" datetime="2019-04-04T08:55:00+08:00">2019-04-04</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-06-18 18:35:08" itemprop="dateModified" datetime="2019-06-18T18:35:08+08:00">2019-06-18</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/" itemprop="url" rel="index"><span itemprop="name">基础</span></a></span>
+
+                
+                
+                  ，
+                
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/网络/" itemprop="url" rel="index"><span itemprop="name">网络</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>本文简单介绍HTTP协议。</p>
+<a id="more"></a>
+<h3 id="HTTP-协议基础"><a href="#HTTP-协议基础" class="headerlink" title="HTTP 协议基础"></a>HTTP 协议基础</h3><h4 id="定义"><a href="#定义" class="headerlink" title="定义"></a>定义</h4><p>HTTP（全称超文本传输协议，英文全称HyperText Transfer Protocol），属于应用层协议，底层是靠TCP进行可靠地信息传输。</p>
+<h4 id="HTTP报文"><a href="#HTTP报文" class="headerlink" title="HTTP报文"></a>HTTP报文</h4><p>HTTP报文分为2部分：</p>
+<ul>
+<li>报文首部：服务端或客户端需处理的请求或响应的内容或属性<ul>
+<li>请求报文中，由<strong>请求行</strong>和<strong>首部字段</strong>组成</li>
+<li>响应报文中，由<strong>状态行</strong>和<strong>首部字段</strong>组成</li>
+</ul>
+</li>
+<li>报文主体：应被发送的数据</li>
+</ul>
+<h5 id="请求报文"><a href="#请求报文" class="headerlink" title="请求报文"></a>请求报文</h5><p><img height="400" src="/assets/blogImg/NetWork_Basic/HTTP/1.png"></p>
+<p><img height="400" src="/assets/blogImg/NetWork_Basic/HTTP/2.png"></p>
+<h5 id="响应报文"><a href="#响应报文" class="headerlink" title="响应报文"></a>响应报文</h5><p><img height="400" src="/assets/blogImg/NetWork_Basic/HTTP/3.png"></p>
+<p><img height="400" src="/assets/blogImg/NetWork_Basic/HTTP/4.png"></p>
+<h4 id="首部字段"><a href="#首部字段" class="headerlink" title="首部字段"></a>首部字段</h4><p>使用首部字段是为了给客服端和服务器端提供报文主体大小、所使用的语言、认证信息等内容。</p>
+<h5 id="首部字段结构"><a href="#首部字段结构" class="headerlink" title="首部字段结构"></a>首部字段结构</h5><p>HTTP 首部字段是由首部字段名和字段值构成的，中间用冒号“：”分隔。</p>
+<h5 id="首部字段类型"><a href="#首部字段类型" class="headerlink" title="首部字段类型"></a>首部字段类型</h5><table>
+<thead>
+<tr>
+<th>类型</th>
+<th>描述</th>
+<th>举例</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>通用首部</td>
+<td>请求报文和响应报文都会使用的首部</td>
+<td>Date、Transfer-Encoding</td>
+</tr>
+<tr>
+<td>请求首部</td>
+<td>补充请求的附加内容、客户端信息、响应内容相关优先级等信息</td>
+<td>Accept-Charset、Host、If-Match</td>
+</tr>
+<tr>
+<td>响应首部</td>
+<td>补充响应的附加内容</td>
+<td>ETag、Location</td>
+</tr>
+<tr>
+<td>实体首部</td>
+<td>补充资源内容更新时间等与实体有关的信息</td>
+<td>Content-Encoding、Content-Length</td>
+</tr>
+</tbody>
+</table>
+<h4 id="Cookie问题"><a href="#Cookie问题" class="headerlink" title="Cookie问题"></a>Cookie问题</h4><h5 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h5><p><font color="orange"><strong>HTTP 是一种无状态协议</strong></font>。但为了支持业务对通信状态的保持，引入 Cookie 技术。</p>
+<h5 id="相关的首部字段"><a href="#相关的首部字段" class="headerlink" title="相关的首部字段"></a>相关的首部字段</h5><table>
+<thead>
+<tr>
+<th>名称</th>
+<th>说明</th>
+<th>类型</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Set-Cookie</td>
+<td>开始状态管理所使用的Cookie信息</td>
+<td>响应首部字段</td>
+</tr>
+<tr>
+<td>Cookie</td>
+<td>服务端收到的Cookie信息</td>
+<td>请求首部字段</td>
+</tr>
+</tbody>
+</table>
+<h5 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h5><p>Cookie 技术通过在请求和响应报文中写入 Cookie 信息来控制客户端的状态：</p>
+<ul>
+<li>服务器端发送的响应报文内，使用<code>Set-Cookie</code>通知客户端保存Cookie</li>
+<li>客户端再往该服务器发送请求时，客户端会自动在请求报文中加入 Cookie 值后发送出去。</li>
+<li>服务器端发现客户端发送过来的 Cookie 后，根据服务器上的记录，最后得到之前的状态信息。</li>
+</ul>
+<p><img height="400" src="/assets/blogImg/NetWork_Basic/HTTP/5.png"></p>
+<h4 id="持久连接"><a href="#持久连接" class="headerlink" title="持久连接"></a>持久连接</h4><p>HTTP 协议的初始版本中，每进行一个 HTTP 通信都要断开一次 TCP 连接。</p>
+<p>为了解决上述 TCP 连接的问题，HTTP/1.1 和部分 HTTP/1.0 想出了持久连接的方法。其特点是，只要任意一端没有明确提出断开连接，则保持 TCP 连接状态。旨在建立一次 TCP 连接后进行多次请求和响应的交互。在 HTTP/1.1 中，所有的连接默认都是持久连接。</p>
+<h3 id="HTTPS-简介"><a href="#HTTPS-简介" class="headerlink" title="HTTPS 简介"></a>HTTPS 简介</h3><p>简单的说：<font color="red"><strong>Http + 加密 + 认证 + 完整性保护 = Https</strong></font>。</p>
+<h4 id="Https的加密原理"><a href="#Https的加密原理" class="headerlink" title="Https的加密原理"></a>Https的加密原理</h4><p>近代密码学中加密的方式主要有两类:</p>
+<ul>
+<li>对称秘钥加密：<ul>
+<li>加密与解密过程使用同一把秘钥</li>
+<li>处理速度快</li>
+<li>如何安全的从一方将秘钥传递到通信的另一方是一个问题</li>
+</ul>
+</li>
+<li>非对称秘钥加密<ul>
+<li>指加密与解密使用两把不同的秘钥</li>
+<li>公开秘钥：可以随意对外公开</li>
+<li>私有秘钥：只用于本身持有</li>
+<li>得到公开秘钥的客户端可以使用公开秘钥对传输内容进行加密，而只有私有秘钥持有者本身可以对公开秘钥加密的内容进行解密。</li>
+<li>克服了秘钥交换的问题，但是相对处理速度较慢</li>
+</ul>
+</li>
+</ul>
+<p>于是，Https的加密原理是：<font color="green">SSL\TLS的加密方式则是结合了两种加密方式的优点。首先采用非对称秘钥加密，将一个对称秘钥使用公开秘钥加密后传输到对方。对方使用私有秘钥解密，得到传输的对称秘钥。之后双方再使用对称秘钥进行通信。这样即解决了对称秘钥加密的秘钥传输问题，又利用了对称秘钥的高效率来进行通信内容的加密与解密</font>。</p>
+<h4 id="Https的认证"><a href="#Https的认证" class="headerlink" title="Https的认证"></a>Https的认证</h4><p>SSL\TLS采用的混合加密的方式还是存在一个问题，即怎么样确保用于加密的公开秘钥确实是所期望的服务器所分发的呢？也许在收到公开秘钥时，这个公开秘钥已经被别人篡改了。因此，我们还需要对这个秘钥进行认证的能力，以确保我们通信的对方是我们所期望的对象。</p>
+<p>目前的做法是使用由数字证书认证机构颁发的公开秘钥证书。服务器的运营人员可以向认证机构提出公开秘钥申请。认证机构在审核之后，会将公开秘钥与共钥证书绑定。服务器就可以将这个共钥证书下发给客户端，客户端在收到证书后，使用认证机构的公开秘钥进行验证。一旦验证成功，即可知道这个秘钥是可以信任的秘钥。</p>
+<h4 id="Https的通信流程"><a href="#Https的通信流程" class="headerlink" title="Https的通信流程"></a>Https的通信流程</h4><p><img height="400" src="/assets/blogImg/NetWork_Basic/HTTP/6.png"></p>
+<p>流程如下：</p>
+<ul>
+<li>Client发起请求</li>
+<li>Server端响应请求，并将证书发送至Client</li>
+<li>Client使用认证机构的公钥解密证书，并从证书中取出Server端公钥</li>
+<li>Client使用公钥加密一个随机秘钥，并传到Server</li>
+<li>Server使用私钥解密出随机秘钥</li>
+<li>通信双方使用随机秘钥最为对称秘钥进行加密解密</li>
+</ul>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/网络/" rel="tag"># 网络</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/04/03/NetWork_Basic_UDP/" rel="next" title="UDP简介">
+                <i class="fa fa-chevron-left"></i> UDP简介
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/04/05/Reactor/" rel="prev" title="Reactor模型">
+                Reactor模型 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">34</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">5</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">7</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#HTTP-协议基础"><span class="nav-number">1.</span> <span class="nav-text">HTTP 协议基础</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#定义"><span class="nav-number">1.1.</span> <span class="nav-text">定义</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#HTTP报文"><span class="nav-number">1.2.</span> <span class="nav-text">HTTP报文</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#请求报文"><span class="nav-number">1.2.1.</span> <span class="nav-text">请求报文</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#响应报文"><span class="nav-number">1.2.2.</span> <span class="nav-text">响应报文</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#首部字段"><span class="nav-number">1.3.</span> <span class="nav-text">首部字段</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#首部字段结构"><span class="nav-number">1.3.1.</span> <span class="nav-text">首部字段结构</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#首部字段类型"><span class="nav-number">1.3.2.</span> <span class="nav-text">首部字段类型</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Cookie问题"><span class="nav-number">1.4.</span> <span class="nav-text">Cookie问题</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#背景"><span class="nav-number">1.4.1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#相关的首部字段"><span class="nav-number">1.4.2.</span> <span class="nav-text">相关的首部字段</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#流程"><span class="nav-number">1.4.3.</span> <span class="nav-text">流程</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#持久连接"><span class="nav-number">1.5.</span> <span class="nav-text">持久连接</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#HTTPS-简介"><span class="nav-number">2.</span> <span class="nav-text">HTTPS 简介</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Https的加密原理"><span class="nav-number">2.1.</span> <span class="nav-text">Https的加密原理</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Https的认证"><span class="nav-number">2.2.</span> <span class="nav-text">Https的认证</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Https的通信流程"><span class="nav-number">2.3.</span> <span class="nav-text">Https的通信流程</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="对于异步IO操作的检测和控制，AsynchronousChannel提供2种方式：  通过返回一个 java.util.concurrent.Future 对象来实现 通过传递一个 java.nio.channels.CompletionHandler，来完成，它会定义在操作完毕后所执行的处理程序方法。  下面主要分析AsynchronousSocketChannel的read操作，研究为了实现“">
+<meta name="keywords" content="Java,NIO">
+<meta property="og:type" content="article">
+<meta property="og:title" content="NIO的异步Channel">
+<meta property="og:url" content="http://yoursite.com/2019/05/12/Java_NIO_AsynchronousChannel/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="对于异步IO操作的检测和控制，AsynchronousChannel提供2种方式：  通过返回一个 java.util.concurrent.Future 对象来实现 通过传递一个 java.nio.channels.CompletionHandler，来完成，它会定义在操作完毕后所执行的处理程序方法。  下面主要分析AsynchronousSocketChannel的read操作，研究为了实现“">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/Java_NIO/AsynchronousChannel/1.png">
+<meta property="og:updated_time" content="2019-07-03T09:24:15.536Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="NIO的异步Channel">
+<meta name="twitter:description" content="对于异步IO操作的检测和控制，AsynchronousChannel提供2种方式：  通过返回一个 java.util.concurrent.Future 对象来实现 通过传递一个 java.nio.channels.CompletionHandler，来完成，它会定义在操作完毕后所执行的处理程序方法。  下面主要分析AsynchronousSocketChannel的read操作，研究为了实现“">
+<meta name="twitter:image" content="http://yoursite.com/assets/blogImg/Java_NIO/AsynchronousChannel/1.png">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2019/05/12/Java_NIO_AsynchronousChannel/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>NIO的异步Channel | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/05/12/Java_NIO_AsynchronousChannel/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">NIO的异步Channel
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-05-12 08:55:00" itemprop="dateCreated datePublished" datetime="2019-05-12T08:55:00+08:00">2019-05-12</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-07-03 17:24:15" itemprop="dateModified" datetime="2019-07-03T17:24:15+08:00">2019-07-03</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/NIO/" itemprop="url" rel="index"><span itemprop="name">NIO</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>对于异步IO操作的检测和控制，AsynchronousChannel提供2种方式：</p>
+<ul>
+<li>通过返回一个 java.util.concurrent.Future 对象来实现</li>
+<li>通过传递一个 java.nio.channels.CompletionHandler，来完成，它会定义在操作完毕后所执行的处理程序方法。</li>
+</ul>
+<p>下面主要分析<code>AsynchronousSocketChannel</code>的read操作，研究为了实现“异步”，JDK帮我们做了什么。</p>
+<a id="more"></a>
+<h3 id="异步Read的API"><a href="#异步Read的API" class="headerlink" title="异步Read的API"></a>异步Read的API</h3><h4 id="API的介绍"><a href="#API的介绍" class="headerlink" title="API的介绍"></a>API的介绍</h4><h5 id="2个Read函数的定义"><a href="#2个Read函数的定义" class="headerlink" title="2个Read函数的定义"></a>2个Read函数的定义</h5><p><code>AsynchronousSocketChannel</code>的read有如下2个read函数：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">public abstract &lt;A&gt; void read(ByteBuffer dst,</span><br><span class="line">                                  long timeout,</span><br><span class="line">                                  TimeUnit unit,</span><br><span class="line">                                  A attachment,</span><br><span class="line">                                  CompletionHandler&lt;Integer,? super A&gt; handler);</span><br><span class="line">								  </span><br><span class="line">								  </span><br><span class="line">public abstract Future&lt;Integer&gt; read(ByteBuffer dst);</span><br></pre></td></tr></table></figure></p>
+<p>如上面代码所示，异步Read操作的API可以分为2种：</p>
+<ul>
+<li>CompletionHandler：通过回调函数</li>
+<li>Future：通过返回代表异步操作结果的Future对象</li>
+</ul>
+<p>其实，不止Read操作，其他的异步IO操作，都有这2种方式的API。</p>
+<h5 id="CompletionHandler的定义"><a href="#CompletionHandler的定义" class="headerlink" title="CompletionHandler的定义"></a>CompletionHandler的定义</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * A handler for consuming the result of an asynchronous I/O operation.</span><br><span class="line"> *</span><br><span class="line"> * @param   &lt;V&gt;     The result type of the I/O operation</span><br><span class="line"> * @param   &lt;A&gt;     The type of the object attached to the I/O operation</span><br><span class="line"> *</span><br><span class="line"> * @since 1.7</span><br><span class="line"> */</span><br><span class="line">public interface CompletionHandler&lt;V,A&gt; &#123;</span><br><span class="line"></span><br><span class="line">   /**</span><br><span class="line">    * Invoked when an operation has completed.</span><br><span class="line">    *</span><br><span class="line">    * @param   result</span><br><span class="line">    *          The result of the I/O operation.</span><br><span class="line">    * @param   attachment</span><br><span class="line">    *          The object attached to the I/O operation when it was initiated.</span><br><span class="line">    */</span><br><span class="line">    void completed(V result, A attachment);</span><br><span class="line">    </span><br><span class="line">   /**</span><br><span class="line">    * Invoked when an operation fails.</span><br><span class="line">    *</span><br><span class="line">    * @param   exc</span><br><span class="line">    *          The exception to indicate why the I/O operation failed</span><br><span class="line">    * @param   attachment</span><br><span class="line">    *          The object attached to the I/O operation when it was initiated.</span><br><span class="line">    */</span><br><span class="line">    void failed(Throwable exc, A attachment);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="API的使用例子"><a href="#API的使用例子" class="headerlink" title="API的使用例子"></a>API的使用例子</h4><h5 id="CompletionHandler方式"><a href="#CompletionHandler方式" class="headerlink" title="CompletionHandler方式"></a>CompletionHandler方式</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line">public class AsynClient &#123;</span><br><span class="line">    AsynchronousSocketChannel asynSocketChannel	= null;</span><br><span class="line">    ByteBuffer recvBuffer = ByteBuffer.allocate(100);</span><br><span class="line"></span><br><span class="line">    /**</span><br><span class="line">    * （1）创建 AsynchronousSocketChannel</span><br><span class="line">    */</span><br><span class="line">    public AsynClient()&#123;</span><br><span class="line">        try &#123;</span><br><span class="line">            asynSocketChannel = AsynchronousSocketChannel.open();</span><br><span class="line">        &#125; catch (Exception e)&#123;&#125;</span><br><span class="line">    &#125;</span><br><span class="line">	</span><br><span class="line">    /**</span><br><span class="line">    * （2） 创建TCP连接</span><br><span class="line">    */	 </span><br><span class="line">    public void connect(String host, int port)&#123;</span><br><span class="line">        InetSocketAddress socketAddress = new InetSocketAddress(host, port);</span><br><span class="line">        asynSocketChannel.connect(socketAddress, this, mConnectHandler);</span><br><span class="line">    &#125;</span><br><span class="line">    //  connect 的回调函数</span><br><span class="line">    private final CompletionHandler&lt;Void, AsynClient&gt; mConnectHandler =</span><br><span class="line">            new CompletionHandler&lt;Void, AsynClient&gt;() &#123;</span><br><span class="line">                @Override</span><br><span class="line">                public void completed(Void result, AsynClient attachment) &#123;</span><br><span class="line">                    attachment.read();</span><br><span class="line">                &#125;</span><br><span class="line">                @Override</span><br><span class="line">                public void failed(Throwable exc, AsynClient attachment) &#123;</span><br><span class="line">                    // log ....</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;;</span><br><span class="line">	</span><br><span class="line">	</span><br><span class="line">    /**</span><br><span class="line">    * （3）从通道读取数据</span><br><span class="line">    */	</span><br><span class="line">    public void read()&#123;</span><br><span class="line">        asynSocketChannel.read(recvBuffer, recvBuffer, mReadHandler);</span><br><span class="line">    &#125;</span><br><span class="line">    //  read 的回调函数</span><br><span class="line">    private final CompletionHandler&lt;Integer, ByteBuffer&gt; mReadHandler =</span><br><span class="line">            new CompletionHandler&lt;Integer, ByteBuffer&gt;() &#123;</span><br><span class="line">                @Override</span><br><span class="line">                public void completed(Integer result, ByteBuffer attachment) &#123;</span><br><span class="line"></span><br><span class="line">                    if (result &lt; 0) &#123;</span><br><span class="line">                        System.out.println(&quot;Read EOF&quot;);</span><br><span class="line">                    &#125; else &#123;</span><br><span class="line">                        attachment.flip();</span><br><span class="line">                        // 读取处理数据，省略</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                @Override</span><br><span class="line">                public void failed(Throwable exc, ByteBuffer attachment) &#123;</span><br><span class="line">                    // log ...</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h5 id="Future方式"><a href="#Future方式" class="headerlink" title="Future方式"></a>Future方式</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">InetSocketAddress socketAddress = new InetSocketAddress(host, port);</span><br><span class="line">Future connectFuture = asynSocketChannel.connect(socketAddress);</span><br><span class="line"></span><br><span class="line">while (!connectFuture.isDone()) &#123;</span><br><span class="line">	// sleep</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Future&lt;Integer&gt; readFuture = asynSocketChannel.read(recvBuffer);</span><br><span class="line">while (!readFuture.isDone()) &#123;</span><br><span class="line">    // sleep</span><br><span class="line">&#125;</span><br><span class="line">try &#123;</span><br><span class="line">    Integer num = readFuture.get();</span><br><span class="line">    System.out.println(&quot;read byte num is &quot;+ num);</span><br><span class="line">&#125;</span><br><span class="line">catch (Exception e)&#123;&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h4><p>比较上面2种异步Read API的使用：</p>
+<ul>
+<li>CompletionHandler方式：需要自定义回调函数，当Channel有数据，这个回调函数被调用（<font color="red">被那个线程调用？这个很重要，后面会说</font>），从而执行读取数据的逻辑</li>
+<li>Future方式：得到Future对象，通过Future对象知道Read操作的结果（是否有数据可读），然后执行读取数据的逻辑</li>
+</ul>
+<h3 id="异步Read的实现"><a href="#异步Read的实现" class="headerlink" title="异步Read的实现"></a>异步Read的实现</h3><h4 id="AsynchronousSocketChannel-的创建"><a href="#AsynchronousSocketChannel-的创建" class="headerlink" title="AsynchronousSocketChannel 的创建"></a>AsynchronousSocketChannel 的创建</h4><p>我们可以使用静态方法 open 创建一个 AsynchronousSocketChannel 对象，它的定义如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">public static AsynchronousSocketChannel open() throws IOException&#123;</span><br><span class="line">	return open(null);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>这是我们前面例子调用的方法，它又调用了如下重载的<code>open</code>方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">public static AsynchronousSocketChannel open(AsynchronousChannelGroup group) throws IOException&#123;</span><br><span class="line">	AsynchronousChannelProvider provider = (group == null) ?</span><br><span class="line">            AsynchronousChannelProvider.provider() : group.provider();</span><br><span class="line">	return provider.openAsynchronousSocketChannel(group);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>上面方法的逻辑是：</p>
+<ul>
+<li>如果入参的 group 为 null，那么使用默认的（系统级别的）<code>AsynchronousChannelProvider</code>，否则使用入参的 group。</li>
+<li>调用 provider 的 <code>openAsynchronousSocketChannel</code>方法</li>
+</ul>
+<p>在Linux下，我们看到<code>LinuxAsynchronousChannelProvider::openAsynchronousSocketChannel</code>方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">public AsynchronousSocketChannel openAsynchronousSocketChannel(AsynchronousChannelGroup group)</span><br><span class="line">	throws IOException</span><br><span class="line">&#123;</span><br><span class="line">	return new UnixAsynchronousSocketChannelImpl(toPort(group));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>继续看<code>UnixAsynchronousSocketChannelImpl</code>的构造方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">UnixAsynchronousSocketChannelImpl(Port port)</span><br><span class="line">    throws IOException</span><br><span class="line">&#123;</span><br><span class="line">    super(port);</span><br><span class="line"></span><br><span class="line">    // set non-blocking</span><br><span class="line">    try &#123;</span><br><span class="line">        IOUtil.configureBlocking(fd, false);</span><br><span class="line">    &#125; catch (IOException x) &#123;</span><br><span class="line">        nd.close(fd);</span><br><span class="line">        throw x;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    this.port = port;</span><br><span class="line">    this.fdVal = IOUtil.fdVal(fd);</span><br><span class="line"></span><br><span class="line">    // add mapping from file descriptor to this channel</span><br><span class="line">    port.register(fdVal, this);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>其中，Port是<code>AsynchronousChannelGroup</code>的子类（它同时是一个抽象类），与“IO多路复用”相关，它的默认实现是<code>EPollPort</code>，省略部分代码：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">final class EPollPort extends Port&#123;</span><br><span class="line"></span><br><span class="line">	// epoll file descriptor</span><br><span class="line">    private final int epfd;</span><br><span class="line">	</span><br><span class="line">	// socket pair used for wakeup</span><br><span class="line">    private final int sp[];</span><br><span class="line">	</span><br><span class="line">	// address of the poll array passed to epoll_wait</span><br><span class="line">    private final long address;</span><br><span class="line">	</span><br><span class="line">	EPollPort(AsynchronousChannelProvider provider, ThreadPool pool)</span><br><span class="line">        throws IOException</span><br><span class="line">    &#123;</span><br><span class="line">        super(provider, pool);</span><br><span class="line"></span><br><span class="line">        // open epoll</span><br><span class="line">        this.epfd = epollCreate();</span><br><span class="line"></span><br><span class="line">        // create socket pair for wakeup mechanism</span><br><span class="line">        int[] sv = new int[2];</span><br><span class="line">        try &#123;</span><br><span class="line">            socketpair(sv);</span><br><span class="line">            // register one end with epoll</span><br><span class="line">            epollCtl(epfd, EPOLL_CTL_ADD, sv[0], POLLIN);</span><br><span class="line">        &#125; catch (IOException x) &#123;</span><br><span class="line">            close0(epfd);</span><br><span class="line">            throw x;</span><br><span class="line">        &#125;</span><br><span class="line">        this.sp = sv;</span><br><span class="line"></span><br><span class="line">        // allocate the poll array</span><br><span class="line">        this.address = allocatePollArray(MAX_EPOLL_EVENTS);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>使用<code>open</code>创建一个<code>AsynchronousSocketChannel</code>对象的逻辑可以总结为：</p>
+<ul>
+<li>使用<code>open</code>方法时，用户可以自定义线程池，也可以使用默认的（系统级别的）</li>
+<li>异步SocketChannel的实现中，有2个重要的属性：<ul>
+<li>port：默认实现是<code>EPollPort</code></li>
+<li>fd：Socket对应的fd</li>
+</ul>
+</li>
+<li><code>EPollPort</code>在构造函数中调用<code>epollCreate</code>，创建epollFd</li>
+</ul>
+<h4 id="AsynchronousSocketChannel的Read的实现"><a href="#AsynchronousSocketChannel的Read的实现" class="headerlink" title="AsynchronousSocketChannel的Read的实现"></a>AsynchronousSocketChannel的Read的实现</h4><p>看到<strong>Read</strong>的实现（在 UnixAsynchronousSocketChannelImpl.java）：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * Initiates a read or scattering read operation</span><br><span class="line"> */</span><br><span class="line">@Override</span><br><span class="line">&lt;V extends Number,A&gt; Future&lt;V&gt; implRead(boolean isScatteringRead,</span><br><span class="line">                                            ByteBuffer dst,</span><br><span class="line">                                            ByteBuffer[] dsts,</span><br><span class="line">                                            long timeout,</span><br><span class="line">                                            TimeUnit unit,</span><br><span class="line">                                            A attachment,</span><br><span class="line">                                            CompletionHandler&lt;V,? super A&gt; handler)</span><br><span class="line">&#123;</span><br><span class="line"></span><br><span class="line">    // ... 省略部分代码</span><br><span class="line"></span><br><span class="line">    PendingFuture&lt;V,A&gt; result = null;</span><br><span class="line">    synchronized (updateLock) &#123;</span><br><span class="line">        this.isScatteringRead = isScatteringRead;</span><br><span class="line">        this.readBuffer = dst;</span><br><span class="line">        this.readBuffers = dsts;</span><br><span class="line">        if (handler == null) &#123;</span><br><span class="line">            this.readHandler = null;</span><br><span class="line">            result = new PendingFuture&lt;V,A&gt;(this, OpType.READ);</span><br><span class="line">            this.readFuture = (PendingFuture&lt;Number,Object&gt;)result;</span><br><span class="line">            this.readAttachment = null;</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            this.readHandler = (CompletionHandler&lt;Number,Object&gt;)handler;</span><br><span class="line">            this.readAttachment = attachment;</span><br><span class="line">            this.readFuture = null;</span><br><span class="line">        &#125;</span><br><span class="line">        if (timeout &gt; 0L) &#123;</span><br><span class="line">            this.readTimer = port.schedule(readTimeoutTask, timeout, unit);</span><br><span class="line">        &#125;</span><br><span class="line">        this.readPending = true;</span><br><span class="line">        updateEvents();</span><br><span class="line">    &#125;</span><br><span class="line">	return result;</span><br><span class="line">	</span><br><span class="line">	// ... 省略部分代码</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>上面方法的逻辑是：</p>
+<ul>
+<li>调用<code>updateEvents()</code>方法，通过调用<code>epollCtl()</code>方法，将<code>POLLIN</code> Event添加到当前 fd 。</li>
+<li>根据传入的参数 handler是否为 null：<ul>
+<li>不为null：即使用<code>CompletionHandler</code>方式</li>
+<li>为null：即使用<code>Future</code>方式，返回<code>Future</code>对象</li>
+</ul>
+</li>
+</ul>
+<p><font color="red"><strong>补充：</strong></font><br>不论使用<code>CompletionHandler</code>方式，还是<code>Future</code>方式的Read函数，最终都是调用到这个<code>implRead()</code>方法，不同之处在处理这个方法返回的<code>Future</code>对象：</p>
+<ul>
+<li><code>CompletionHandler</code>方式：忽略返回的<code>Future</code>对象</li>
+<li><code>Future</code>方式：返回<code>Future</code>对象给用户</li>
+</ul>
+<h4 id="获取就绪事件"><a href="#获取就绪事件" class="headerlink" title="获取就绪事件"></a>获取就绪事件</h4><p>前面说过，<code>EPollPort</code>与“IO多路复用”相关，现在看看它这部分的实现：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br></pre></td><td class="code"><pre><span class="line">final class EPollPort</span><br><span class="line">    extends Port</span><br><span class="line">&#123;</span><br><span class="line"></span><br><span class="line">	// epoll file descriptor</span><br><span class="line">    private final int epfd;</span><br><span class="line">	</span><br><span class="line">	private final ArrayBlockingQueue&lt;Event&gt; queue;</span><br><span class="line"></span><br><span class="line">	EPollPort start() &#123;</span><br><span class="line">		startThreads(new EventHandlerTask());</span><br><span class="line">		return this;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	/*</span><br><span class="line">     * Task to process events from epoll and dispatch to the channel&apos;s</span><br><span class="line">     * onEvent handler.</span><br><span class="line">     *</span><br><span class="line">     * Events are retreived from epoll in batch and offered to a BlockingQueue</span><br><span class="line">     * where they are consumed by handler threads. A special &quot;NEED_TO_POLL&quot;</span><br><span class="line">     * event is used to signal one consumer to re-poll when all events have</span><br><span class="line">     * been consumed.</span><br><span class="line">     */</span><br><span class="line">	private class EventHandlerTask implements Runnable &#123;</span><br><span class="line">        private Event poll() throws IOException &#123;</span><br><span class="line">            try &#123;</span><br><span class="line">                for (;;) &#123;</span><br><span class="line">                    int n = epollWait(epfd, address, MAX_EPOLL_EVENTS);</span><br><span class="line">                    /*</span><br><span class="line">                     * &apos;n&apos; events have been read. Here we map them to their</span><br><span class="line">                     * corresponding channel in batch and queue n-1 so that</span><br><span class="line">                     * they can be handled by other handler threads. The last</span><br><span class="line">                     * event is handled by this thread (and so is not queued).</span><br><span class="line">                     */</span><br><span class="line">                    fdToChannelLock.readLock().lock();</span><br><span class="line">                    try &#123;</span><br><span class="line">                        while (n-- &gt; 0) &#123;</span><br><span class="line">                            long eventAddress = getEvent(address, n);</span><br><span class="line">                            int fd = getDescriptor(eventAddress);</span><br><span class="line"></span><br><span class="line">                            // 。。。 省略</span><br><span class="line">							</span><br><span class="line">                            PollableChannel channel = fdToChannel.get(fd);</span><br><span class="line">                            if (channel != null) &#123;</span><br><span class="line">                                int events = getEvents(eventAddress);</span><br><span class="line">                                Event ev = new Event(channel, events);</span><br><span class="line"></span><br><span class="line">                                // n-1 events are queued; This thread handles</span><br><span class="line">                                // the last one except for the wakeup</span><br><span class="line">                                if (n &gt; 0) &#123;</span><br><span class="line">                                    queue.offer(ev);</span><br><span class="line">                                &#125; else &#123;</span><br><span class="line">                                    return ev;</span><br><span class="line">                                &#125;</span><br><span class="line">                            &#125;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125; finally &#123;</span><br><span class="line">                        fdToChannelLock.readLock().unlock();</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; finally &#123;</span><br><span class="line">                // to ensure that some thread will poll when all events have</span><br><span class="line">                // been consumed</span><br><span class="line">                queue.offer(NEED_TO_POLL);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        public void run() &#123;</span><br><span class="line">            Invoker.GroupAndInvokeCount myGroupAndInvokeCount =</span><br><span class="line">                Invoker.getGroupAndInvokeCount();</span><br><span class="line">            final boolean isPooledThread = (myGroupAndInvokeCount != null);</span><br><span class="line">            boolean replaceMe = false;</span><br><span class="line">            Event ev;</span><br><span class="line">            try &#123;</span><br><span class="line">                for (;;) &#123;</span><br><span class="line">                    // reset invoke count</span><br><span class="line">                    if (isPooledThread)</span><br><span class="line">                        myGroupAndInvokeCount.resetInvokeCount();</span><br><span class="line"></span><br><span class="line">                    try &#123;</span><br><span class="line">                        replaceMe = false;</span><br><span class="line">                        ev = queue.take();</span><br><span class="line"></span><br><span class="line">                        // no events and this thread has been &quot;selected&quot; to</span><br><span class="line">                        // poll for more.</span><br><span class="line">                        if (ev == NEED_TO_POLL) &#123;</span><br><span class="line">                            try &#123;</span><br><span class="line">                                ev = poll();</span><br><span class="line">                            &#125; catch (IOException x) &#123;</span><br><span class="line">                                x.printStackTrace();</span><br><span class="line">                                return;</span><br><span class="line">                            &#125;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125; catch (InterruptedException x) &#123;</span><br><span class="line">                        continue;</span><br><span class="line">                    &#125;</span><br><span class="line"></span><br><span class="line">                    // 。。。 省略</span><br><span class="line"></span><br><span class="line">                    // process event</span><br><span class="line">                    try &#123;</span><br><span class="line">                        ev.channel().onEvent(ev.events(), isPooledThread);</span><br><span class="line">                    &#125; catch (Error x) &#123;</span><br><span class="line">                        replaceMe = true; throw x;</span><br><span class="line">                    &#125; catch (RuntimeException x) &#123;</span><br><span class="line">                        replaceMe = true; throw x;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; finally &#123;</span><br><span class="line">                // last handler to exit when shutdown releases resources</span><br><span class="line">                int remaining = threadExit(this, replaceMe);</span><br><span class="line">                if (remaining == 0 &amp;&amp; isShutdown()) &#123;</span><br><span class="line">                    implClose();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>上面方法的逻辑是：</p>
+<ul>
+<li>在 EPollPort 启动时，会在线程池执行<code>EventHandlerTask</code>，这个Task主要做2个事情：<ul>
+<li>从 Epoll 获取就绪事件</li>
+<li>分发就绪事件到相关Channel</li>
+</ul>
+</li>
+<li>通过<code>epollWait()</code>方法获取就绪事件，封装成Event</li>
+<li>异步Channel的实现类，需要实现<code>Port.PollableChannel</code>接口，这个接口只有一个<code>onEvent()</code>方法，处理就绪事件的逻辑就在这里</li>
+</ul>
+<h4 id="处理就绪事件"><a href="#处理就绪事件" class="headerlink" title="处理就绪事件"></a>处理就绪事件</h4><p>假设有数据可读，那么<code>UnixAsynchronousSocketChannelImpl</code>里面的<code>onEvent()</code>方法会被执行，然后调用<code>finishRead()</code>方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br></pre></td><td class="code"><pre><span class="line">private void finishRead(boolean mayInvokeDirect) &#123;</span><br><span class="line">    int n = -1;</span><br><span class="line">    Throwable exc = null;</span><br><span class="line"></span><br><span class="line">    // copy fields as we can&apos;t access them after reading is re-enabled.</span><br><span class="line">    boolean scattering = isScatteringRead;</span><br><span class="line">    CompletionHandler&lt;Number,Object&gt; handler = readHandler;</span><br><span class="line">    Object att = readAttachment;</span><br><span class="line">    PendingFuture&lt;Number,Object&gt; future = readFuture;</span><br><span class="line">    Future&lt;?&gt; timeout = readTimer;</span><br><span class="line"></span><br><span class="line">    try &#123;</span><br><span class="line">        begin();</span><br><span class="line"></span><br><span class="line">        if (scattering) &#123;</span><br><span class="line">            n = (int)IOUtil.read(fd, readBuffers, nd);</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            n = IOUtil.read(fd, readBuffer, -1, nd);</span><br><span class="line">        &#125;</span><br><span class="line">        if (n == IOStatus.UNAVAILABLE) &#123;</span><br><span class="line">            // spurious wakeup, is this possible?</span><br><span class="line">            synchronized (updateLock) &#123;</span><br><span class="line">                readPending = true;</span><br><span class="line">            &#125;</span><br><span class="line">            return;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        // allow objects to be GC&apos;ed.</span><br><span class="line">		/** </span><br><span class="line">		  * 留意：仅仅是这个Channel对象不引用 Buffer对象，</span><br><span class="line">		  *       此时Buffer还不会被GC，因为用户代码有它的强引用</span><br><span class="line">         */		  </span><br><span class="line">        this.readBuffer = null;</span><br><span class="line">        this.readBuffers = null;</span><br><span class="line">        this.readAttachment = null;</span><br><span class="line"></span><br><span class="line">        // allow another read to be initiated</span><br><span class="line">        enableReading();</span><br><span class="line"></span><br><span class="line">    &#125; catch (Throwable x) &#123;</span><br><span class="line">        enableReading();</span><br><span class="line">        if (x instanceof ClosedChannelException)</span><br><span class="line">            x = new AsynchronousCloseException();</span><br><span class="line">        exc = x;</span><br><span class="line">    &#125; finally &#123;</span><br><span class="line">        // restart poll in case of concurrent write</span><br><span class="line">        if (!(exc instanceof AsynchronousCloseException))</span><br><span class="line">            lockAndUpdateEvents();</span><br><span class="line">        end();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // cancel the associated timer</span><br><span class="line">    if (timeout != null)</span><br><span class="line">        timeout.cancel(false);</span><br><span class="line"></span><br><span class="line">    // create result</span><br><span class="line">    Number result = (exc != null) ? null : (scattering) ?</span><br><span class="line">        (Number)Long.valueOf(n) : (Number)Integer.valueOf(n);</span><br><span class="line"></span><br><span class="line">    // invoke handler or set result</span><br><span class="line">    if (handler == null) &#123;</span><br><span class="line">        future.setResult(result, exc);</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        if (mayInvokeDirect) &#123;</span><br><span class="line">            Invoker.invokeUnchecked(handler, att, result, exc);</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            Invoker.invokeIndirectly(this, handler, att, result, exc);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>上面代码，只关注主要流程：</p>
+<ul>
+<li>通过<code>IOUtil.read()</code>将 fd 里面的数据读到 readBuffer里面</li>
+<li>根据传入的参数 handler是否为 null，通知用户的方式也不一样：<ul>
+<li>handler为null：即<code>CompletionHandler</code>方式，调用用户定义的回调函数</li>
+<li>handler不为null：即<code>Future</code>方式，将 result 设置到 future 对象里面</li>
+</ul>
+</li>
+<li><code>Invoker.invokeIndirectly</code>：通过 channel group 的线程池，调用 handler，代码如下：<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * Invokes the handler indirectly via the channel group&apos;s thread pool.</span><br><span class="line"> */</span><br><span class="line">static &lt;V,A&gt; void invokeIndirectly(AsynchronousChannel channel,</span><br><span class="line">                                   final CompletionHandler&lt;V,? super A&gt; handler,</span><br><span class="line">                                   final A attachment,</span><br><span class="line">                                   final V result,</span><br><span class="line">                                   final Throwable exc)</span><br><span class="line">&#123;</span><br><span class="line">    try &#123;</span><br><span class="line">        ((Groupable)channel).group().executeOnPooledThread(new Runnable() &#123;</span><br><span class="line">            public void run() &#123;</span><br><span class="line">                GroupAndInvokeCount thisGroupAndInvokeCount =</span><br><span class="line">                    myGroupAndInvokeCount.get();</span><br><span class="line">                if (thisGroupAndInvokeCount != null)</span><br><span class="line">                    thisGroupAndInvokeCount.setInvokeCount(1);</span><br><span class="line">                invokeUnchecked(handler, attachment, result, exc);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line">    &#125; catch (RejectedExecutionException ree) &#123;</span><br><span class="line">        throw new ShutdownChannelGroupException();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">/**</span><br><span class="line"> * Invoke handler without checking the thread identity or number of handlers</span><br><span class="line"> * on the thread stack.</span><br><span class="line"> */</span><br><span class="line">static &lt;V,A&gt; void invokeUnchecked(CompletionHandler&lt;V,? super A&gt; handler,</span><br><span class="line">                                  A attachment,</span><br><span class="line">                                  V value,</span><br><span class="line">                                  Throwable exc)</span><br><span class="line">&#123;</span><br><span class="line">    if (exc == null) &#123;</span><br><span class="line">        handler.completed(value, attachment);</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        handler.failed(exc, attachment);</span><br><span class="line">    &#125;  </span><br><span class="line">    // clear interrupt</span><br><span class="line">    Thread.interrupted();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<h4 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h4><p><img src="/assets/blogImg/Java_NIO/AsynchronousChannel/1.png"></p>
+<ul>
+<li>使用异步Channel的Read，用户提供3个对象：<ul>
+<li>Buffer：数据将会读取到这个缓冲区</li>
+<li>CompletionHandler：回调函数，IO操作完成时被调用</li>
+<li>ThreadPool：线程池，基本整个IO过程都由它的线程执行，包括：<ul>
+<li>检测、处理就绪事件</li>
+<li>执行回调函数逻辑</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>本文分析的代码，使用 Linux 的 Epoll：<ul>
+<li>创建异步Channel对象时，调用<code>epollCreate</code></li>
+<li>使用<code>read()</code>函数时，调用<code>epollCtl()</code></li>
+<li>执行<code>EventHandlerTask</code>的线程（称它为IO线程），通过<code>epollWait()</code>获取就绪事件</li>
+</ul>
+</li>
+<li>IO线程会调用<code>onEvent()</code>方法，处理就绪事件，在这里就是有数据可读：<ul>
+<li>从FD拷贝数据到Buffer</li>
+<li>通知用户层</li>
+</ul>
+</li>
+<li>通知用户层有2种方式，根据调用哪一个版本的<code>read()</code>函数而不同：<ul>
+<li><code>CompletionHandler</code>方式：IO线程执行用户定义的<code>CompletionHandler</code>的逻辑</li>
+<li><code>Future</code>方式：将 result 设置到 future 对象里面</li>
+</ul>
+</li>
+</ul>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Java/" rel="tag"># Java</a>
+          
+            <a href="/tags/NIO/" rel="tag"># NIO</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/05/11/Java_NIO_Begin_End/" rel="next" title="NIO里面的begin和end方法">
+                <i class="fa fa-chevron-left"></i> NIO里面的begin和end方法
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/05/13/Java_NIO_Socket_SocketChannel/" rel="prev" title="Socket和SocketChannel读取数据的差别">
+                Socket和SocketChannel读取数据的差别 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">34</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">5</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">7</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#异步Read的API"><span class="nav-number">1.</span> <span class="nav-text">异步Read的API</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#API的介绍"><span class="nav-number">1.1.</span> <span class="nav-text">API的介绍</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#2个Read函数的定义"><span class="nav-number">1.1.1.</span> <span class="nav-text">2个Read函数的定义</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#CompletionHandler的定义"><span class="nav-number">1.1.2.</span> <span class="nav-text">CompletionHandler的定义</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#API的使用例子"><span class="nav-number">1.2.</span> <span class="nav-text">API的使用例子</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#CompletionHandler方式"><span class="nav-number">1.2.1.</span> <span class="nav-text">CompletionHandler方式</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#Future方式"><span class="nav-number">1.2.2.</span> <span class="nav-text">Future方式</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#小结"><span class="nav-number">1.3.</span> <span class="nav-text">小结</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#异步Read的实现"><span class="nav-number">2.</span> <span class="nav-text">异步Read的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#AsynchronousSocketChannel-的创建"><span class="nav-number">2.1.</span> <span class="nav-text">AsynchronousSocketChannel 的创建</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#AsynchronousSocketChannel的Read的实现"><span class="nav-number">2.2.</span> <span class="nav-text">AsynchronousSocketChannel的Read的实现</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#获取就绪事件"><span class="nav-number">2.3.</span> <span class="nav-text">获取就绪事件</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#处理就绪事件"><span class="nav-number">2.4.</span> <span class="nav-text">处理就绪事件</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#总结"><span class="nav-number">2.5.</span> <span class="nav-text">总结</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

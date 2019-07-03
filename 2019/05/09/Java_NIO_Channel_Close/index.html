@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="思考考虑如下问题：阻塞于SocketChannel的线程是如何被“唤醒”的？下面通过源码查找答案。">
+<meta name="keywords" content="Java,NIO">
+<meta property="og:type" content="article">
+<meta property="og:title" content="InterruptibleChannel的close方法">
+<meta property="og:url" content="http://yoursite.com/2019/05/09/Java_NIO_Channel_Close/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="思考考虑如下问题：阻塞于SocketChannel的线程是如何被“唤醒”的？下面通过源码查找答案。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-07-02T02:52:15.585Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="InterruptibleChannel的close方法">
+<meta name="twitter:description" content="思考考虑如下问题：阻塞于SocketChannel的线程是如何被“唤醒”的？下面通过源码查找答案。">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2019/05/09/Java_NIO_Channel_Close/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>InterruptibleChannel的close方法 | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/05/09/Java_NIO_Channel_Close/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">InterruptibleChannel的close方法
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-05-09 08:55:00" itemprop="dateCreated datePublished" datetime="2019-05-09T08:55:00+08:00">2019-05-09</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-07-02 10:52:15" itemprop="dateModified" datetime="2019-07-02T10:52:15+08:00">2019-07-02</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/NIO/" itemprop="url" rel="index"><span itemprop="name">NIO</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h3 id="思考"><a href="#思考" class="headerlink" title="思考"></a>思考</h3><p>考虑如下问题：<font color="red">阻塞于<code>SocketChannel</code>的线程是如何被“唤醒”的</font>？<br>下面通过源码查找答案。</p>
+<a id="more"></a>
+<h3 id="InterruptibleChannel接口的定义："><a href="#InterruptibleChannel接口的定义：" class="headerlink" title="InterruptibleChannel接口的定义："></a><code>InterruptibleChannel</code>接口的定义：</h3><blockquote>
+<p>A channel that can be asynchronously closed and interrupted.</p>
+<p>A channel that implements this interface is asynchronously closeable : If a thread is blocked in an I/O operation on an interruptible channel then another thread may invoke the channel’s <code>close</code> method. This will cause the blocked thread to receive an <code>AsynchronousCloseException</code>.</p>
+<p>A channel that implements this interface is also interruptible : If a thread is blocked in an I/O operation on an interruptible channel then another thread may invoke the blocked thread’s <code>interrupt</code> method. This will cause the channel to be closed, the blocked thread to receive a <code>ClosedByInterruptException</code> , and the blocked thread’s interrupt status to be set.</p>
+<p>If a thread’s interrupt status is already set and it invokes a blocking If a thread’s interrupt status is already set and it invokes a blocking will immediately receive a <code>ClosedByInterruptException</code>; its interrupt status will remain set.</p>
+<p>A channel supports asynchronous closing and interruption if, and only if, it implements this interface.  This can be tested at runtime, if necessary, via the instanceof operator.</p>
+</blockquote>
+<p>可以看到，“唤醒”一个阻塞于<code>InterruptibleChannel</code>的线程可以通过2个方法：</p>
+<ul>
+<li>InterruptibleChannel的<code>Close</code>方法</li>
+<li>Thread的<code>interrupt</code>方法</li>
+</ul>
+<p>下面主要看 InterruptibleChannel的<code>Close</code>方法的实现。</p>
+<h3 id="close方法的实现"><a href="#close方法的实现" class="headerlink" title="close方法的实现"></a>close方法的实现</h3><h4 id="AbstractInterruptibleChannel的close方法"><a href="#AbstractInterruptibleChannel的close方法" class="headerlink" title="AbstractInterruptibleChannel的close方法"></a>AbstractInterruptibleChannel的close方法</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">public final void close() throws IOException &#123;</span><br><span class="line">    synchronized (closeLock) &#123;</span><br><span class="line">        if (!open)</span><br><span class="line">            return;</span><br><span class="line">        open = false;</span><br><span class="line">        implCloseChannel();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>相关逻辑都在<code>implCloseChannel</code>方法里面。</p>
+<h4 id="AbstractSelectableChannel的implCloseChannel方法"><a href="#AbstractSelectableChannel的implCloseChannel方法" class="headerlink" title="AbstractSelectableChannel的implCloseChannel方法"></a>AbstractSelectableChannel的implCloseChannel方法</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"> /**</span><br><span class="line">  * Closes this channel.</span><br><span class="line">  *</span><br><span class="line">  * &lt;p&gt; This method, which is specified in the &#123;@link</span><br><span class="line">  * AbstractInterruptibleChannel&#125; class and is invoked by the &#123;@link</span><br><span class="line">  * java.nio.channels.Channel#close close&#125; method, in turn invokes the</span><br><span class="line">  * &#123;@link #implCloseSelectableChannel implCloseSelectableChannel&#125; method in</span><br><span class="line">  * order to perform the actual work of closing this channel.  It then</span><br><span class="line">  * cancels all of this channel&apos;s keys.  &lt;/p&gt;</span><br><span class="line">  */</span><br><span class="line">protected final void implCloseChannel() throws IOException &#123;</span><br><span class="line">    implCloseSelectableChannel();</span><br><span class="line">    synchronized (keyLock) &#123;</span><br><span class="line">        int count = (keys == null) ? 0 : keys.length;</span><br><span class="line">        for (int i = 0; i &lt; count; i++) &#123;</span><br><span class="line">            SelectionKey k = keys[i];</span><br><span class="line">            if (k != null)</span><br><span class="line">                k.cancel();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这个方法做了2个事情：</p>
+<ol>
+<li>调用<code>implCloseSelectableChannel</code>方法，这是一个抽象方法，它的具体实现就是真正的做关闭通道的事情。</li>
+<li>调用注册在这个通道上的SelectionKey的<code>cancel</code>方法，注销通道在Selector上的注册。</li>
+</ol>
+<p>下面分别看看<code>SocketChannel</code>和<code>ServerSocketChannel</code>的<code>implCloseSelectableChannel</code>方法的实现。</p>
+<h4 id="ServerSocketChannelImpl的implCloseSelectableChannel方法"><a href="#ServerSocketChannelImpl的implCloseSelectableChannel方法" class="headerlink" title="ServerSocketChannelImpl的implCloseSelectableChannel方法"></a>ServerSocketChannelImpl的<code>implCloseSelectableChannel</code>方法</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">protected void implCloseSelectableChannel() throws IOException &#123;</span><br><span class="line">    synchronized (stateLock) &#123;</span><br><span class="line">        nd.preClose(fd);</span><br><span class="line">        long th = thread;</span><br><span class="line">        if (th != 0)</span><br><span class="line">            NativeThread.signal(th);</span><br><span class="line">        if (!isRegistered())</span><br><span class="line">            kill();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="SocketChannelImpl的implCloseSelectableChannel方法"><a href="#SocketChannelImpl的implCloseSelectableChannel方法" class="headerlink" title="SocketChannelImpl的implCloseSelectableChannel方法"></a>SocketChannelImpl的<code>implCloseSelectableChannel</code>方法</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line">// AbstractInterruptibleChannel synchronizes invocations of this method</span><br><span class="line">// using AbstractInterruptibleChannel.closeLock, and also ensures that this</span><br><span class="line">// method is only ever invoked once.  Before we get to this method, isOpen</span><br><span class="line">// (which is volatile) will have been set to false.</span><br><span class="line">//</span><br><span class="line">protected void implCloseSelectableChannel() throws IOException &#123;</span><br><span class="line">    synchronized (stateLock) &#123;</span><br><span class="line">        isInputOpen = false;</span><br><span class="line">        isOutputOpen = false;</span><br><span class="line"></span><br><span class="line">        // Close the underlying file descriptor and dup it to a known fd</span><br><span class="line">        // that&apos;s already closed.  This prevents other operations on this</span><br><span class="line">        // channel from using the old fd, which might be recycled in the</span><br><span class="line">        // meantime and allocated to an entirely different channel.</span><br><span class="line">        //</span><br><span class="line">        nd.preClose(fd);</span><br><span class="line"></span><br><span class="line">        // Signal native threads, if needed.  If a target thread is not</span><br><span class="line">        // currently blocked in an I/O operation then no harm is done since</span><br><span class="line">        // the signal handler doesn&apos;t actually do anything.</span><br><span class="line">        //</span><br><span class="line">        if (readerThread != 0)</span><br><span class="line">            NativeThread.signal(readerThread);</span><br><span class="line"></span><br><span class="line">        if (writerThread != 0)</span><br><span class="line">            NativeThread.signal(writerThread);</span><br><span class="line"></span><br><span class="line">        // If this channel is not registered then it&apos;s safe to close the fd</span><br><span class="line">        // immediately since we know at this point that no thread is</span><br><span class="line">        // blocked in an I/O operation upon the channel and, since the</span><br><span class="line">        // channel is marked closed, no thread will start another such</span><br><span class="line">        // operation.  If this channel is registered then we don&apos;t close</span><br><span class="line">        // the fd since it might be in use by a selector.  In that case</span><br><span class="line">        // closing this channel caused its keys to be cancelled, so the</span><br><span class="line">        // last selector to deregister a key for this channel will invoke</span><br><span class="line">        // kill() to close the fd.</span><br><span class="line">        //</span><br><span class="line">        if (!isRegistered())</span><br><span class="line">            kill();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>想要明白<code>ServerSocketChannelImpl</code>和<code>SocketChannelImpl</code>的implCloseSelectableChannel方法，需要搞明白<strong>NativeDispatcher</strong>和<strong>NativeThread</strong>。</p>
+<h3 id="NativeThread的实现"><a href="#NativeThread的实现" class="headerlink" title="NativeThread的实现"></a>NativeThread的实现</h3><h4 id="NativeThread的Java实现"><a href="#NativeThread的Java实现" class="headerlink" title="NativeThread的Java实现"></a>NativeThread的Java实现</h4><p>NativeThread比较简单，注释也多：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">// Signalling operations on native threads</span><br><span class="line">//</span><br><span class="line">// On some operating systems (e.g., Linux), closing a channel while another</span><br><span class="line">// thread is blocked in an I/O operation upon that channel does not cause that</span><br><span class="line">// thread to be released.  This class provides access to the native threads</span><br><span class="line">// upon which Java threads are built, and defines a simple signal mechanism</span><br><span class="line">// that can be used to release a native thread from a blocking I/O operation.</span><br><span class="line">// On systems that do not require this type of signalling, the current() method</span><br><span class="line">// always returns -1 and the signal(long) method has no effect.</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">class NativeThread &#123;</span><br><span class="line"></span><br><span class="line">    // Returns an opaque token representing the native thread underlying the</span><br><span class="line">    // invoking Java thread.  On systems that do not require signalling, this</span><br><span class="line">    // method always returns -1.</span><br><span class="line">    //</span><br><span class="line">    static native long current();</span><br><span class="line"></span><br><span class="line">    // Signals the given native thread so as to release it from a blocking I/O</span><br><span class="line">    // operation.  On systems that do not require signalling, this method has</span><br><span class="line">    // no effect.</span><br><span class="line">    //</span><br><span class="line">    static native void signal(long nt);</span><br><span class="line"></span><br><span class="line">    static native void init();</span><br><span class="line"></span><br><span class="line">    static &#123;</span><br><span class="line">        Util.load();</span><br><span class="line">        init();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h4 id="NativeThread的本地方法实现"><a href="#NativeThread的本地方法实现" class="headerlink" title="NativeThread的本地方法实现"></a>NativeThread的本地方法实现</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br></pre></td><td class="code"><pre><span class="line">// 自定义中断信号，kill –l</span><br><span class="line">#define INTERRUPT_SIGNAL (__SIGRTMAX - 2)</span><br><span class="line"></span><br><span class="line">//自定义的信号处理函数，当前函数什么都不做</span><br><span class="line">static void</span><br><span class="line">nullHandler(int sig)</span><br><span class="line">&#123;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">/** --------- init方法的本地实现  ---------*/</span><br><span class="line">JNIEXPORT void JNICALL</span><br><span class="line">Java_sun_nio_ch_NativeThread_init(JNIEnv *env, jclass cl)</span><br><span class="line">&#123;</span><br><span class="line">#ifdef __linux__</span><br><span class="line"></span><br><span class="line">    /* Install the null handler for INTERRUPT_SIGNAL.  This might overwrite the</span><br><span class="line">     * handler previously installed by java/net/linux_close.c, but that&apos;s okay</span><br><span class="line">     * since neither handler actually does anything.  We install our own</span><br><span class="line">     * handler here simply out of paranoia; ultimately the two mechanisms</span><br><span class="line">     * should somehow be unified, perhaps within the VM.</span><br><span class="line">     */</span><br><span class="line"></span><br><span class="line">    sigset_t ss;</span><br><span class="line">    struct sigaction sa, osa;</span><br><span class="line">    sa.sa_handler = nullHandler;</span><br><span class="line">    sa.sa_flags = 0;</span><br><span class="line">    sigemptyset(&amp;sa.sa_mask);</span><br><span class="line">    if (sigaction(INTERRUPT_SIGNAL, &amp;sa, &amp;osa) &lt; 0)</span><br><span class="line">        JNU_ThrowIOExceptionWithLastError(env, &quot;sigaction&quot;);</span><br><span class="line"></span><br><span class="line">#endif</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">/**  --------- current方法的本地实现  --------- */</span><br><span class="line">JNIEXPORT jlong JNICALL</span><br><span class="line">Java_sun_nio_ch_NativeThread_current(JNIEnv *env, jclass cl)</span><br><span class="line">&#123;</span><br><span class="line">#ifdef __linux__</span><br><span class="line">    return (long)pthread_self();</span><br><span class="line">#else</span><br><span class="line">    return -1;</span><br><span class="line">#endif</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">/**  --------- signal方法的本地实现  --------- */</span><br><span class="line">JNIEXPORT void JNICALL</span><br><span class="line">Java_sun_nio_ch_NativeThread_signal(JNIEnv *env, jclass cl, jlong thread)</span><br><span class="line">&#123;</span><br><span class="line">#ifdef __linux__</span><br><span class="line">    if (pthread_kill((pthread_t)thread, INTERRUPT_SIGNAL))</span><br><span class="line">        JNU_ThrowIOExceptionWithLastError(env, &quot;Thread signal failed&quot;);</span><br><span class="line">#endif</span><br></pre></td></tr></table></figure>
+<h4 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h4><ol>
+<li><code>init</code>方法用到了sigaction安装一个信号，就是当收到信号 INTERRUPT_SIGNAL 时，执行函数 nullHandler（空函数）。</li>
+<li><code>current</code>方法使用了<code>pthread_self()</code>获取当前线程ID。</li>
+<li><code>signal</code>方法使用了<code>pthread_kill</code>发送信号 INTERRUPT_SIGNAL</li>
+<li>其中的原理是：如果一个线程阻塞，其他线程向他发送信号，从而终止阻塞。</li>
+</ol>
+<h3 id="NativeDispatcher"><a href="#NativeDispatcher" class="headerlink" title="NativeDispatcher"></a>NativeDispatcher</h3><p>在之前列出的<code>ServerSocketChannelImpl</code>的代码中，nd就是<code>NativeDispatcher</code>。<br>重新列出之前<code>implCloseSelectableChannel</code>的代码：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">protected void implCloseSelectableChannel() throws IOException &#123;</span><br><span class="line">    synchronized (stateLock) &#123;</span><br><span class="line">        nd.preClose(fd);</span><br><span class="line">        long th = thread;</span><br><span class="line">        if (th != 0)</span><br><span class="line">            NativeThread.signal(th);</span><br><span class="line">        if (!isRegistered())</span><br><span class="line">            kill();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>接下来介绍NativeDispatcher的<code>preClose()</code>和<code>kill()</code>方法。</p>
+<h4 id="为什么需要preClose？"><a href="#为什么需要preClose？" class="headerlink" title="为什么需要preClose？"></a><font color="orange"><strong>为什么需要preClose？</strong></font></h4><p>在多线程环境下，总是很难知道什么时候可安全的关闭或释放资源(如fd)，当一个线程A使用fd来读写，而另一个线程B关闭或释放了fd，则A线程就会读写一个错误的文件或socket；为了防止这种情况出现，于是NIO就采用了经典的<strong><em>two-step处理方案</em></strong>：</p>
+<ol>
+<li>创建一个socket pair，假设FDs为sp[2]，先close掉sp[1]，这样，该socket pair就成为了一个半关闭的链接；复制(dup2)sp[0]到fd(即为我们想关闭或释放的fd)，这个时候，其他线程如果正在读写立即会获得EOF 或者Pipe Error，read或write方法里会检测这些状态做相应处理</li>
+<li>最后一个会使用到fd的线程负责释放</li>
+</ol>
+<h4 id="NativeDispatcher的init"><a href="#NativeDispatcher的init" class="headerlink" title="NativeDispatcher的init"></a>NativeDispatcher的init</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">/* File descriptor to which we dup other fd&apos;s before closing them for real */</span><br><span class="line">static int preCloseFD = -1;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">JNIEXPORT void JNICALL</span><br><span class="line">Java_sun_nio_ch_FileDispatcherImpl_init(JNIEnv *env, jclass cl)</span><br><span class="line">&#123;</span><br><span class="line">    int sp[2];</span><br><span class="line">    if (socketpair(PF_UNIX, SOCK_STREAM, 0, sp) &lt; 0) &#123;</span><br><span class="line">        JNU_ThrowIOExceptionWithLastError(env, &quot;socketpair failed&quot;);</span><br><span class="line">        return;</span><br><span class="line">    &#125;</span><br><span class="line">    preCloseFD = sp[0];</span><br><span class="line">    close(sp[1]);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这个方法通过使用<code>socketpair</code>创建一个全双工链接，然后关闭sp[1]端。</p>
+<h4 id="NativeDispatcher的preclose"><a href="#NativeDispatcher的preclose" class="headerlink" title="NativeDispatcher的preclose"></a>NativeDispatcher的preclose</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">JNIEXPORT void JNICALL</span><br><span class="line">Java_sun_nio_ch_FileDispatcherImpl_preClose0(JNIEnv *env, jclass clazz, jobject fdo)</span><br><span class="line">&#123;</span><br><span class="line">    jint fd = fdval(env, fdo);</span><br><span class="line">    if (preCloseFD &gt;= 0) &#123;</span><br><span class="line">        if (dup2(preCloseFD, fd) &lt; 0)</span><br><span class="line">            JNU_ThrowIOExceptionWithLastError(env, &quot;dup2 failed&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这个方法通过使用<code>dup2</code>将preCloseFD复制到fd(预关闭的fd，既fd被替换了，此时，其他线程对fd的读写，实际上是对preCloseFD进行读写，是会收到EOF或 Pipe Error)。</p>
+<h4 id="NativeDispatcher的close"><a href="#NativeDispatcher的close" class="headerlink" title="NativeDispatcher的close"></a>NativeDispatcher的close</h4><p>这个才是真正关闭fd的操作。</p>
+<p>在<code>implCloseSelectableChannel</code>里面，通过判断如果没有selector注册到当前通道，那么就可以调用<code>kill()</code>方法了：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">public void kill() throws IOException &#123;</span><br><span class="line">    synchronized (stateLock) &#123;</span><br><span class="line">        if (state == ST_KILLED)</span><br><span class="line">            return;</span><br><span class="line">        if (state == ST_UNINITIALIZED) &#123;</span><br><span class="line">            state = ST_KILLED;</span><br><span class="line">            return;</span><br><span class="line">        &#125;</span><br><span class="line">        assert !isOpen() &amp;&amp; !isRegistered();</span><br><span class="line">        nd.close(fd);</span><br><span class="line">        state = ST_KILLED;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>确实是调用了NativeDispatcher的close()方法，然后自然是系统调用close(fd)。</p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><ol>
+<li><code>AbstractInterruptibleChannel</code>的close方法使原来阻塞在此通道的线程不再阻塞，并且收到异常。</li>
+<li>通过使用<code>NativeThread</code>（它使用了系统的信号），来实现“唤醒”阻塞的线程。</li>
+<li>为了避免多个线程下共享的fd的关闭释放而导致某些线程可能读写“旧”fd的问题，java nio的实现采用了two-step的关闭，具体实现在<code>NativeDispatcher</code>的preclose和close方法。</li>
+</ol>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Java/" rel="tag"># Java</a>
+          
+            <a href="/tags/NIO/" rel="tag"># NIO</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/05/08/Java_NIO_Selector_Introduce/" rel="next" title="NIO的Selector">
+                <i class="fa fa-chevron-left"></i> NIO的Selector
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/05/10/Java_NIO_Selector_WakeUp/" rel="prev" title="Selector的wakeup方法">
+                Selector的wakeup方法 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">34</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">5</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">7</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#思考"><span class="nav-number">1.</span> <span class="nav-text">思考</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#InterruptibleChannel接口的定义："><span class="nav-number">2.</span> <span class="nav-text">InterruptibleChannel接口的定义：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#close方法的实现"><span class="nav-number">3.</span> <span class="nav-text">close方法的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#AbstractInterruptibleChannel的close方法"><span class="nav-number">3.1.</span> <span class="nav-text">AbstractInterruptibleChannel的close方法</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#AbstractSelectableChannel的implCloseChannel方法"><span class="nav-number">3.2.</span> <span class="nav-text">AbstractSelectableChannel的implCloseChannel方法</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ServerSocketChannelImpl的implCloseSelectableChannel方法"><span class="nav-number">3.3.</span> <span class="nav-text">ServerSocketChannelImpl的implCloseSelectableChannel方法</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#SocketChannelImpl的implCloseSelectableChannel方法"><span class="nav-number">3.4.</span> <span class="nav-text">SocketChannelImpl的implCloseSelectableChannel方法</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#NativeThread的实现"><span class="nav-number">4.</span> <span class="nav-text">NativeThread的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#NativeThread的Java实现"><span class="nav-number">4.1.</span> <span class="nav-text">NativeThread的Java实现</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#NativeThread的本地方法实现"><span class="nav-number">4.2.</span> <span class="nav-text">NativeThread的本地方法实现</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#小结"><span class="nav-number">4.3.</span> <span class="nav-text">小结</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#NativeDispatcher"><span class="nav-number">5.</span> <span class="nav-text">NativeDispatcher</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#为什么需要preClose？"><span class="nav-number">5.1.</span> <span class="nav-text">为什么需要preClose？</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#NativeDispatcher的init"><span class="nav-number">5.2.</span> <span class="nav-text">NativeDispatcher的init</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#NativeDispatcher的preclose"><span class="nav-number">5.3.</span> <span class="nav-text">NativeDispatcher的preclose</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#NativeDispatcher的close"><span class="nav-number">5.4.</span> <span class="nav-text">NativeDispatcher的close</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#总结"><span class="nav-number">6.</span> <span class="nav-text">总结</span></a></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

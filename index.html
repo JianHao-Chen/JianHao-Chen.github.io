@@ -320,7 +320,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/05/03/Java_Basic_Anonymous_Inner_Classes/">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/05/14/Java_NIO_DirectByteBuffer/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="JH_Chen">
@@ -340,7 +340,7 @@
           <h1 class="post-title" itemprop="name headline">
                 
                 
-                <a href="/2018/05/03/Java_Basic_Anonymous_Inner_Classes/" class="post-title-link" itemprop="url">匿名内部类</a>
+                <a href="/2019/05/14/Java_NIO_DirectByteBuffer/" class="post-title-link" itemprop="url">Java堆外内存</a>
               
             
           </h1>
@@ -365,7 +365,7 @@
                 
               
 
-              <time title="创建时间：2018-05-03 21:36:00" itemprop="dateCreated datePublished" datetime="2018-05-03T21:36:00+08:00">2018-05-03</time>
+              <time title="创建时间：2019-05-14 08:55:00" itemprop="dateCreated datePublished" datetime="2019-05-14T08:55:00+08:00">2019-05-14</time>
             
 
             
@@ -382,7 +382,7 @@
                 
                   <span class="post-meta-item-text">更新于</span>
                 
-                <time title="修改时间：2019-05-11 22:12:06" itemprop="dateModified" datetime="2019-05-11T22:12:06+08:00">2019-05-11</time>
+                <time title="修改时间：2019-07-03 18:49:02" itemprop="dateModified" datetime="2019-07-03T18:49:02+08:00">2019-07-03</time>
               
             
           </span>
@@ -399,14 +399,7 @@
                 <span class="post-meta-item-text">分类于</span>
               
               
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/" itemprop="url" rel="index"><span itemprop="name">基础</span></a></span>
-
-                
-                
-                  ，
-                
-              
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/Java/" itemprop="url" rel="index"><span itemprop="name">Java</span></a></span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/NIO/" itemprop="url" rel="index"><span itemprop="name">NIO</span></a></span>
 
                 
                 
@@ -439,12 +432,17 @@
 
       
         
-          <p>回到这个问题:<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">class Outter&#123;</span><br><span class="line">  public void <span class="function"><span class="title">go</span></span>()&#123;</span><br><span class="line">    final int filed = 12;</span><br><span class="line">    </span><br><span class="line">    Thread t = new Thread(<span class="string">"TestThread"</span>)&#123;</span><br><span class="line">      public void <span class="function"><span class="title">run</span></span>()&#123;</span><br><span class="line">        System.out.println(filed);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;;</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  public void goWithParameter(final int field)&#123;</span><br><span class="line">  </span><br><span class="line">    Thread t = new Thread(<span class="string">""</span>)&#123;</span><br><span class="line">      public void <span class="function"><span class="title">run</span></span>()&#123;</span><br><span class="line">        System.out.println(field);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
-<p>不论是<code>go()</code>还是<code>goWithParameter()</code>，它们所访问的<code>field</code>都必须带有<code>final</code>修饰符，否则编译报错。为什么？</p>
+          <p>本文分析堆外内存的原理，包括以下部分：</p>
+<ul>
+<li>堆外内存的创建</li>
+<li>堆外内存的回收</li>
+<li>使用堆外内存读写</li>
+<li>堆外内存的优势</li>
+</ul>
           <!--noindex-->
           
             <div class="post-button text-center">
-              <a class="btn" href="/2018/05/03/Java_Basic_Anonymous_Inner_Classes/#more" rel="contents">
+              <a class="btn" href="/2019/05/14/Java_NIO_DirectByteBuffer/#more" rel="contents">
                 阅读全文 &raquo;
               </a>
             </div>
@@ -504,7 +502,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/05/02/Java_Basic_Reference/">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/05/13/Java_NIO_Socket_SocketChannel/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="JH_Chen">
@@ -524,7 +522,7 @@
           <h1 class="post-title" itemprop="name headline">
                 
                 
-                <a href="/2018/05/02/Java_Basic_Reference/" class="post-title-link" itemprop="url">JAVA的引用</a>
+                <a href="/2019/05/13/Java_NIO_Socket_SocketChannel/" class="post-title-link" itemprop="url">Socket和SocketChannel读取数据的差别</a>
               
             
           </h1>
@@ -549,7 +547,7 @@
                 
               
 
-              <time title="创建时间：2018-05-02 21:36:00" itemprop="dateCreated datePublished" datetime="2018-05-02T21:36:00+08:00">2018-05-02</time>
+              <time title="创建时间：2019-05-13 08:55:00" itemprop="dateCreated datePublished" datetime="2019-05-13T08:55:00+08:00">2019-05-13</time>
             
 
             
@@ -566,7 +564,7 @@
                 
                   <span class="post-meta-item-text">更新于</span>
                 
-                <time title="修改时间：2019-05-11 16:51:56" itemprop="dateModified" datetime="2019-05-11T16:51:56+08:00">2019-05-11</time>
+                <time title="修改时间：2019-07-03 20:08:06" itemprop="dateModified" datetime="2019-07-03T20:08:06+08:00">2019-07-03</time>
               
             
           </span>
@@ -583,14 +581,7 @@
                 <span class="post-meta-item-text">分类于</span>
               
               
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/" itemprop="url" rel="index"><span itemprop="name">基础</span></a></span>
-
-                
-                
-                  ，
-                
-              
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/Java/" itemprop="url" rel="index"><span itemprop="name">Java</span></a></span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/NIO/" itemprop="url" rel="index"><span itemprop="name">NIO</span></a></span>
 
                 
                 
@@ -623,11 +614,11 @@
 
       
         
-          <p>JAVA中对象的引用有四种，它们由高到低依次为: 强引用、软引用、弱引用和虚引用。<br>
+          <p><strong><em>Socket</em></strong> 是<code>java.net</code>包下的类，<strong><em>SocketChannel</em></strong> 是<code>java.nio.channels</code>包下的类。下面将分析它们读操作的细节。<br>
           <!--noindex-->
           
             <div class="post-button text-center">
-              <a class="btn" href="/2018/05/02/Java_Basic_Reference/#more" rel="contents">
+              <a class="btn" href="/2019/05/13/Java_NIO_Socket_SocketChannel/#more" rel="contents">
                 阅读全文 &raquo;
               </a>
             </div>
@@ -687,7 +678,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/04/02/Java_Basic_ThreadlLocal/">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/05/12/Java_NIO_AsynchronousChannel/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="JH_Chen">
@@ -707,7 +698,7 @@
           <h1 class="post-title" itemprop="name headline">
                 
                 
-                <a href="/2018/04/02/Java_Basic_ThreadlLocal/" class="post-title-link" itemprop="url">ThreadLocal是否会引发内存泄露的问题</a>
+                <a href="/2019/05/12/Java_NIO_AsynchronousChannel/" class="post-title-link" itemprop="url">NIO的异步Channel</a>
               
             
           </h1>
@@ -732,7 +723,7 @@
                 
               
 
-              <time title="创建时间：2018-04-02 19:36:00" itemprop="dateCreated datePublished" datetime="2018-04-02T19:36:00+08:00">2018-04-02</time>
+              <time title="创建时间：2019-05-12 08:55:00" itemprop="dateCreated datePublished" datetime="2019-05-12T08:55:00+08:00">2019-05-12</time>
             
 
             
@@ -749,7 +740,7 @@
                 
                   <span class="post-meta-item-text">更新于</span>
                 
-                <time title="修改时间：2019-05-11 15:45:06" itemprop="dateModified" datetime="2019-05-11T15:45:06+08:00">2019-05-11</time>
+                <time title="修改时间：2019-07-03 17:24:15" itemprop="dateModified" datetime="2019-07-03T17:24:15+08:00">2019-07-03</time>
               
             
           </span>
@@ -766,14 +757,7 @@
                 <span class="post-meta-item-text">分类于</span>
               
               
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/" itemprop="url" rel="index"><span itemprop="name">基础</span></a></span>
-
-                
-                
-                  ，
-                
-              
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/Java/" itemprop="url" rel="index"><span itemprop="name">Java</span></a></span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/NIO/" itemprop="url" rel="index"><span itemprop="name">NIO</span></a></span>
 
                 
                 
@@ -806,11 +790,16 @@
 
       
         
-          <p>网上有观点认为使用ThreadLocal会造成内存泄露的问题，那到底事实是不是这样的呢？</p>
+          <p>对于异步IO操作的检测和控制，AsynchronousChannel提供2种方式：</p>
+<ul>
+<li>通过返回一个 java.util.concurrent.Future 对象来实现</li>
+<li>通过传递一个 java.nio.channels.CompletionHandler，来完成，它会定义在操作完毕后所执行的处理程序方法。</li>
+</ul>
+<p>下面主要分析<code>AsynchronousSocketChannel</code>的read操作，研究为了实现“异步”，JDK帮我们做了什么。</p>
           <!--noindex-->
           
             <div class="post-button text-center">
-              <a class="btn" href="/2018/04/02/Java_Basic_ThreadlLocal/#more" rel="contents">
+              <a class="btn" href="/2019/05/12/Java_NIO_AsynchronousChannel/#more" rel="contents">
                 阅读全文 &raquo;
               </a>
             </div>
@@ -870,7 +859,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/04/01/Java_Basic_NIO/">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/05/11/Java_NIO_Begin_End/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="JH_Chen">
@@ -890,7 +879,7 @@
           <h1 class="post-title" itemprop="name headline">
                 
                 
-                <a href="/2018/04/01/Java_Basic_NIO/" class="post-title-link" itemprop="url">Java NIO 简介</a>
+                <a href="/2019/05/11/Java_NIO_Begin_End/" class="post-title-link" itemprop="url">NIO里面的begin和end方法</a>
               
             
           </h1>
@@ -915,7 +904,7 @@
                 
               
 
-              <time title="创建时间：2018-04-01 08:55:00" itemprop="dateCreated datePublished" datetime="2018-04-01T08:55:00+08:00">2018-04-01</time>
+              <time title="创建时间：2019-05-11 08:55:00" itemprop="dateCreated datePublished" datetime="2019-05-11T08:55:00+08:00">2019-05-11</time>
             
 
             
@@ -932,7 +921,7 @@
                 
                   <span class="post-meta-item-text">更新于</span>
                 
-                <time title="修改时间：2019-05-11 15:33:05" itemprop="dateModified" datetime="2019-05-11T15:33:05+08:00">2019-05-11</time>
+                <time title="修改时间：2019-07-02 12:05:00" itemprop="dateModified" datetime="2019-07-02T12:05:00+08:00">2019-07-02</time>
               
             
           </span>
@@ -949,14 +938,7 @@
                 <span class="post-meta-item-text">分类于</span>
               
               
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/" itemprop="url" rel="index"><span itemprop="name">基础</span></a></span>
-
-                
-                
-                  ，
-                
-              
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/Java/" itemprop="url" rel="index"><span itemprop="name">Java</span></a></span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/NIO/" itemprop="url" rel="index"><span itemprop="name">NIO</span></a></span>
 
                 
                 
@@ -989,17 +971,16 @@
 
       
         
-          <h3 id="介绍NIO"><a href="#介绍NIO" class="headerlink" title="介绍NIO"></a>介绍NIO</h3><p>NIO包（java.nio.*）引入了四个关键的抽象数据类型，它们共同解决传统的I/O类中的一些问题。</p>
-<ol>
-<li>Buffer：它是包含数据且用于读写的线形表结构。其中还提供了一个特殊类用于内存映射文件的I/O操作。</li>
-<li>Charset：它提供Unicode字符串影射到字节序列以及逆影射的操作。</li>
-<li>Channels：包含socket，file和pipe三种管道，它实际上是双向交流的通道。</li>
-<li>Selector：它将多元异步I/O操作集中到一个或多个线程中（它可以被看成是Unix中select（）函数或Win32中WaitForSingleEvent（）函数的面向对象版本）。</li>
-</ol>
+          <p>在之前一篇文章提过，阻塞于<code>InterruptibleChannel</code>的线程，可以通过如下2种方式“唤醒”：</p>
+<ul>
+<li>InterruptibleChannel的<code>Close</code>方法</li>
+<li>Thread的<code>interrupt</code>方法</li>
+</ul>
+<p>其中，<code>close</code>方法已经介绍过了，这篇文章介绍Thread的<code>interrupt</code>方法是如何“唤醒”阻塞于<code>InterruptibleChannel</code>的线程的。<br>实际上，Thread的<code>interrupt</code>方法同样可以“唤醒”阻塞于Selector的<code>select</code>操作的线程。</p>
           <!--noindex-->
           
             <div class="post-button text-center">
-              <a class="btn" href="/2018/04/01/Java_Basic_NIO/#more" rel="contents">
+              <a class="btn" href="/2019/05/11/Java_NIO_Begin_End/#more" rel="contents">
                 阅读全文 &raquo;
               </a>
             </div>
@@ -1059,7 +1040,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/03/03/Linux_epoll/">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/05/10/Java_NIO_Selector_WakeUp/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="JH_Chen">
@@ -1079,7 +1060,7 @@
           <h1 class="post-title" itemprop="name headline">
                 
                 
-                <a href="/2018/03/03/Linux_epoll/" class="post-title-link" itemprop="url">Linux的epoll</a>
+                <a href="/2019/05/10/Java_NIO_Selector_WakeUp/" class="post-title-link" itemprop="url">Selector的wakeup方法</a>
               
             
           </h1>
@@ -1104,7 +1085,7 @@
                 
               
 
-              <time title="创建时间：2018-03-03 19:12:00" itemprop="dateCreated datePublished" datetime="2018-03-03T19:12:00+08:00">2018-03-03</time>
+              <time title="创建时间：2019-05-10 08:55:00" itemprop="dateCreated datePublished" datetime="2019-05-10T08:55:00+08:00">2019-05-10</time>
             
 
             
@@ -1121,7 +1102,547 @@
                 
                   <span class="post-meta-item-text">更新于</span>
                 
-                <time title="修改时间：2019-05-11 15:18:07" itemprop="dateModified" datetime="2019-05-11T15:18:07+08:00">2019-05-11</time>
+                <time title="修改时间：2019-07-02 11:35:37" itemprop="dateModified" datetime="2019-07-02T11:35:37+08:00">2019-07-02</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/NIO/" itemprop="url" rel="index"><span itemprop="name">NIO</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <p>在Java的Selector接口中，定义了wakeup方法：</p>
+<blockquote>
+<p>Causes the first selection operation that has not yet returned to return immediately.</p>
+<p>If another thread is currently blocked in an invocation of the <code>select()</code> or <code>select(long)</code> methods then that invocation will return immediately. If no selection operation is currently in progress then the next invocation of one of these methods will return immediately unless the <code>selectNow()</code> method is invoked in the meantime. In any case the value returned by that invocation may be non-zero. Subsequent invocations of the <code>select()</code> or <code>select(long)</code> methods will block as usual unless this method is invoked again in the meantime.</p>
+<p>Invoking this method more than once between two successive selection operations has the same effect as invoking it just once.</p>
+</blockquote>
+<p>简单来说，就是如果一个线程调用select方法是会阻塞的，如果其他线程想终止这个过程，可以调用wakeup方法将这个线程“唤醒”。</p>
+<p>下面，通过分析源码查看这个过程是如何实现的。<br>
+          <!--noindex-->
+          
+            <div class="post-button text-center">
+              <a class="btn" href="/2019/05/10/Java_NIO_Selector_WakeUp/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          
+          <!--/noindex-->
+        
+      
+    </p></div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/05/09/Java_NIO_Channel_Close/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                
+                <a href="/2019/05/09/Java_NIO_Channel_Close/" class="post-title-link" itemprop="url">InterruptibleChannel的close方法</a>
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-05-09 08:55:00" itemprop="dateCreated datePublished" datetime="2019-05-09T08:55:00+08:00">2019-05-09</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-07-02 10:52:15" itemprop="dateModified" datetime="2019-07-02T10:52:15+08:00">2019-07-02</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/NIO/" itemprop="url" rel="index"><span itemprop="name">NIO</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <h3 id="思考"><a href="#思考" class="headerlink" title="思考"></a>思考</h3><p>考虑如下问题：<font color="red">阻塞于<code>SocketChannel</code>的线程是如何被“唤醒”的</font>？<br>下面通过源码查找答案。</p>
+          <!--noindex-->
+          
+            <div class="post-button text-center">
+              <a class="btn" href="/2019/05/09/Java_NIO_Channel_Close/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/05/08/Java_NIO_Selector_Introduce/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                
+                <a href="/2019/05/08/Java_NIO_Selector_Introduce/" class="post-title-link" itemprop="url">NIO的Selector</a>
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-05-08 08:55:00" itemprop="dateCreated datePublished" datetime="2019-05-08T08:55:00+08:00">2019-05-08</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-07-01 12:17:48" itemprop="dateModified" datetime="2019-07-01T12:17:48+08:00">2019-07-01</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/NIO/" itemprop="url" rel="index"><span itemprop="name">NIO</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          <h3 id="本文主要内容"><a href="#本文主要内容" class="headerlink" title="本文主要内容"></a>本文主要内容</h3><ul>
+<li>回顾 Selector 的一些基本知识</li>
+<li>通过分析JDK源码，分别了解以下3个场景的细节：<ul>
+<li>Selector的创建</li>
+<li>Channel注册到Selector</li>
+<li>Selector选择就绪Channel
+          <!--noindex-->
+          
+            <div class="post-button text-center">
+              <a class="btn" href="/2019/05/08/Java_NIO_Selector_Introduce/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          
+          <!--/noindex-->
+        
+      
+    </li></ul></li></ul></div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/04/05/Reactor/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                
+                <a href="/2019/04/05/Reactor/" class="post-title-link" itemprop="url">Reactor模型</a>
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-04-05 08:55:00" itemprop="dateCreated datePublished" datetime="2019-04-05T08:55:00+08:00">2019-04-05</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-06-19 12:00:25" itemprop="dateModified" datetime="2019-06-19T12:00:25+08:00">2019-06-19</time>
               
             
           </span>
@@ -1178,16 +1699,21 @@
 
       
         
-          <p>关于这篇文章：</p>
+          <h3 id="Reactor-是什么"><a href="#Reactor-是什么" class="headerlink" title="Reactor 是什么"></a>Reactor 是什么</h3><p>引用wiki上的介绍：</p>
+<blockquote>
+<p>The reactor design pattern is an event handling pattern for handling service requests delivered concurrently to a service handler by one or more inputs. The service handler then demultiplexes the incoming requests and dispatches them synchronously to the associated request handlers.</p>
+</blockquote>
+<p>可以得到如下关键点：</p>
 <ul>
-<li>内容：Linux的 epoll 的API和它的实现。</li>
-<li>目的：学习Java Nio的过程中，想了解一下 epoll</li>
-<li>注意：部分内容来自网上，不敢保证一定对。</li>
+<li>事件驱动（event handling）</li>
+<li>可以处理一个或多个输入源（one or more inputs）</li>
+<li>通过Service Handler同步的将输入事件（Event）采用多路复用分发给相应的Request Handler（多个）处理</li>
 </ul>
+<p><img height="400" src="/assets/blogImg/REACTOR/1.png"></p>
           <!--noindex-->
           
             <div class="post-button text-center">
-              <a class="btn" href="/2018/03/03/Linux_epoll/#more" rel="contents">
+              <a class="btn" href="/2019/04/05/Reactor/#more" rel="contents">
                 阅读全文 &raquo;
               </a>
             </div>
@@ -1247,7 +1773,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/03/02/Linux_mmap/">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/04/04/NetWork_Basic_HTTP/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="JH_Chen">
@@ -1267,7 +1793,7 @@
           <h1 class="post-title" itemprop="name headline">
                 
                 
-                <a href="/2018/03/02/Linux_mmap/" class="post-title-link" itemprop="url">Linux的mmap</a>
+                <a href="/2019/04/04/NetWork_Basic_HTTP/" class="post-title-link" itemprop="url">HTTP简介</a>
               
             
           </h1>
@@ -1292,7 +1818,7 @@
                 
               
 
-              <time title="创建时间：2018-03-02 19:45:00" itemprop="dateCreated datePublished" datetime="2018-03-02T19:45:00+08:00">2018-03-02</time>
+              <time title="创建时间：2019-04-04 08:55:00" itemprop="dateCreated datePublished" datetime="2019-04-04T08:55:00+08:00">2019-04-04</time>
             
 
             
@@ -1309,7 +1835,7 @@
                 
                   <span class="post-meta-item-text">更新于</span>
                 
-                <time title="修改时间：2019-05-11 15:06:38" itemprop="dateModified" datetime="2019-05-11T15:06:38+08:00">2019-05-11</time>
+                <time title="修改时间：2019-06-18 18:35:08" itemprop="dateModified" datetime="2019-06-18T18:35:08+08:00">2019-06-18</time>
               
             
           </span>
@@ -1333,7 +1859,7 @@
                   ，
                 
               
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/CS/" itemprop="url" rel="index"><span itemprop="name">CS</span></a></span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/网络/" itemprop="url" rel="index"><span itemprop="name">网络</span></a></span>
 
                 
                 
@@ -1366,16 +1892,11 @@
 
       
         
-          <p>关于这篇文章：</p>
-<ul>
-<li>内容：Linux的 mmap 的原理。</li>
-<li>目的：学习Java Nio的过程中，想了解一下 mmap</li>
-<li>注意：部分内容来自网上，不敢保证一定对。</li>
-</ul>
+          <p>本文简单介绍HTTP协议。</p>
           <!--noindex-->
           
             <div class="post-button text-center">
-              <a class="btn" href="/2018/03/02/Linux_mmap/#more" rel="contents">
+              <a class="btn" href="/2019/04/04/NetWork_Basic_HTTP/#more" rel="contents">
                 阅读全文 &raquo;
               </a>
             </div>
@@ -1435,7 +1956,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/03/01/Linux_select/">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/04/03/NetWork_Basic_UDP/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="JH_Chen">
@@ -1455,7 +1976,7 @@
           <h1 class="post-title" itemprop="name headline">
                 
                 
-                <a href="/2018/03/01/Linux_select/" class="post-title-link" itemprop="url">Linux的select</a>
+                <a href="/2019/04/03/NetWork_Basic_UDP/" class="post-title-link" itemprop="url">UDP简介</a>
               
             
           </h1>
@@ -1480,7 +2001,7 @@
                 
               
 
-              <time title="创建时间：2018-03-01 18:34:00" itemprop="dateCreated datePublished" datetime="2018-03-01T18:34:00+08:00">2018-03-01</time>
+              <time title="创建时间：2019-04-03 08:55:00" itemprop="dateCreated datePublished" datetime="2019-04-03T08:55:00+08:00">2019-04-03</time>
             
 
             
@@ -1497,7 +2018,7 @@
                 
                   <span class="post-meta-item-text">更新于</span>
                 
-                <time title="修改时间：2019-05-11 14:23:04" itemprop="dateModified" datetime="2019-05-11T14:23:04+08:00">2019-05-11</time>
+                <time title="修改时间：2019-06-18 16:57:11" itemprop="dateModified" datetime="2019-06-18T16:57:11+08:00">2019-06-18</time>
               
             
           </span>
@@ -1521,7 +2042,7 @@
                   ，
                 
               
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/CS/" itemprop="url" rel="index"><span itemprop="name">CS</span></a></span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/网络/" itemprop="url" rel="index"><span itemprop="name">网络</span></a></span>
 
                 
                 
@@ -1554,575 +2075,11 @@
 
       
         
-          <p>关于这篇文章：</p>
-<ul>
-<li>内容：Linux的 select 的API和它的实现。</li>
-<li>目的：学习Java Nio的过程中，想了解一下 select</li>
-<li>注意：部分内容来自网上，不敢保证一定对。</li>
-</ul>
+          <p>本文简单介绍UDP协议。</p>
           <!--noindex-->
           
             <div class="post-button text-center">
-              <a class="btn" href="/2018/03/01/Linux_select/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-
-    
-    
-    
-
-    
-
-    
-      
-    
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/02/13/Consistent Hashing/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="JH_Chen">
-      <meta itemprop="description" content>
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Hexo">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                
-                <a href="/2018/02/13/Consistent Hashing/" class="post-title-link" itemprop="url">一致性哈希算法</a>
-              
-            
-          </h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-
-            
-            
-            
-
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-
-              
-                
-              
-
-              <time title="创建时间：2018-02-13 20:05:00" itemprop="dateCreated datePublished" datetime="2018-02-13T20:05:00+08:00">2018-02-13</time>
-            
-
-            
-              
-
-              
-                
-                <span class="post-meta-divider">|</span>
-                
-
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-calendar-check-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">更新于</span>
-                
-                <time title="修改时间：2019-05-11 12:00:01" itemprop="dateModified" datetime="2019-05-11T12:00:01+08:00">2019-05-11</time>
-              
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/" itemprop="url" rel="index"><span itemprop="name">基础</span></a></span>
-
-                
-                
-                  ，
-                
-              
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/CS/" itemprop="url" rel="index"><span itemprop="name">CS</span></a></span>
-
-                
-                
-              
-            </span>
-          
-
-          
-
-          
-          
-
-          
-
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <p>假设我们有一个网站，最近发现随着流量增加，服务器压力越来越大，之前直接读写数据库的方式不太给力了，于是我们想引入Memcached作为缓存机制。现在我们一共有三台机器可以作为Memcached服务器，如下图所示。<br><img src="/assets/blogImg/consistent_hash/1.png" alt></p>
-<p>很显然，最简单的策略是将每一次Memcached请求随机发送到一台Memcached服务器，但是这种策略可能会带来两个问题：一是同一份数据可能被存在不同的机器上而造成数据冗余，二是有可能某数据已经被缓存但是访问却没有命中，因为无法保证对相同key的所有访问都被发送到相同的服务器。因此，随机策略无论是时间效率还是空间效率都非常不好。</p>
-          <!--noindex-->
-          
-            <div class="post-button text-center">
-              <a class="btn" href="/2018/02/13/Consistent Hashing/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-
-    
-    
-    
-
-    
-
-    
-      
-    
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/02/12/IOModel/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="JH_Chen">
-      <meta itemprop="description" content>
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Hexo">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                
-                <a href="/2018/02/12/IOModel/" class="post-title-link" itemprop="url">IO模型</a>
-              
-            
-          </h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-
-            
-            
-            
-
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-
-              
-                
-              
-
-              <time title="创建时间：2018-02-12 08:55:00" itemprop="dateCreated datePublished" datetime="2018-02-12T08:55:00+08:00">2018-02-12</time>
-            
-
-            
-              
-
-              
-                
-                <span class="post-meta-divider">|</span>
-                
-
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-calendar-check-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">更新于</span>
-                
-                <time title="修改时间：2019-05-11 11:59:57" itemprop="dateModified" datetime="2019-05-11T11:59:57+08:00">2019-05-11</time>
-              
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/" itemprop="url" rel="index"><span itemprop="name">基础</span></a></span>
-
-                
-                
-                  ，
-                
-              
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/CS/" itemprop="url" rel="index"><span itemprop="name">CS</span></a></span>
-
-                
-                
-              
-            </span>
-          
-
-          
-
-          
-          
-
-          
-
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <h3 id="同步与异步"><a href="#同步与异步" class="headerlink" title="同步与异步"></a>同步与异步</h3><p>同步和异步关注的是消息通信机制(synchronous communication / asynchronous communication)。</p>
-<ul>
-<li><font color="green"> <strong>同步:</strong></font><br>在发出一个调用时，在没有得到结果之前，该调用就不返回。但是一旦调用返回，就得到返回值了。换句话说，就是由调用者主动等待这个调用的结果。</li>
-<li><font color="green"> <strong>异步:</strong></font><br>调用在发出之后，这个调用就直接返回了，所以没有返回结果。换句话说，当一个异步过程调用发出后，调用者不会立刻得到结果。而是在调用发出后，被调用者通过状态、通知来通知调用者，或通过回调函数处理这个调用。</li>
-</ul>
-<h3 id="阻塞与非阻塞"><a href="#阻塞与非阻塞" class="headerlink" title="阻塞与非阻塞"></a>阻塞与非阻塞</h3><p>阻塞和非阻塞关注的是程序在等待调用结果（消息，返回值）时的状态。</p>
-<ul>
-<li><font color="green"> <strong>阻塞:</strong></font><br>调用结果返回之前，当前线程会被挂起。调用线程只有在得到结果之后才会返回。</li>
-<li><font color="green"> <strong>非阻塞:</strong></font><br>在不能立刻得到结果之前，该调用不会阻塞当前线程。    </li>
-</ul>
-          <!--noindex-->
-          
-            <div class="post-button text-center">
-              <a class="btn" href="/2018/02/12/IOModel/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-
-    
-    
-    
-
-    
-
-    
-      
-    
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2017/11/03/Java_Basic_Singleton/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="JH_Chen">
-      <meta itemprop="description" content>
-      <meta itemprop="image" content="/images/avatar.gif">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Hexo">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                
-                <a href="/2017/11/03/Java_Basic_Singleton/" class="post-title-link" itemprop="url">Java单例模式的7种写法</a>
-              
-            
-          </h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-
-            
-            
-            
-
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-
-              
-                
-              
-
-              <time title="创建时间：2017-11-03 14:36:00" itemprop="dateCreated datePublished" datetime="2017-11-03T14:36:00+08:00">2017-11-03</time>
-            
-
-            
-              
-
-              
-                
-                <span class="post-meta-divider">|</span>
-                
-
-                <span class="post-meta-item-icon">
-                  <i class="fa fa-calendar-check-o"></i>
-                </span>
-                
-                  <span class="post-meta-item-text">更新于</span>
-                
-                <time title="修改时间：2019-05-11 16:40:39" itemprop="dateModified" datetime="2019-05-11T16:40:39+08:00">2019-05-11</time>
-              
-            
-          </span>
-
-          
-            <span class="post-category">
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/" itemprop="url" rel="index"><span itemprop="name">基础</span></a></span>
-
-                
-                
-                  ，
-                
-              
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/Java/" itemprop="url" rel="index"><span itemprop="name">Java</span></a></span>
-
-                
-                
-              
-            </span>
-          
-
-          
-
-          
-          
-
-          
-
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          <p>介绍Java单例模式的7种写法。</p>
-          <!--noindex-->
-          
-            <div class="post-button text-center">
-              <a class="btn" href="/2017/11/03/Java_Basic_Singleton/#more" rel="contents">
+              <a class="btn" href="/2019/04/03/NetWork_Basic_UDP/#more" rel="contents">
                 阅读全文 &raquo;
               </a>
             </div>
@@ -2171,7 +2128,7 @@
 
   
   <nav class="pagination">
-    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="extend next" rel="next" href="/page/2/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
+    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><span class="space">&hellip;</span><a class="page-number" href="/page/4/">4</a><a class="extend next" rel="next" href="/page/2/"><i class="fa fa-angle-right" aria-label="下一页"></i></a>
   </nav>
 
 
@@ -2213,7 +2170,7 @@
                 
                   <a href="/archives/">
                 
-                    <span class="site-state-item-count">14</span>
+                    <span class="site-state-item-count">34</span>
                     <span class="site-state-item-name">日志</span>
                   </a>
                 </div>
@@ -2236,7 +2193,11 @@
                     
                       
                     
-                    <span class="site-state-item-count">3</span>
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">5</span>
                     <span class="site-state-item-name">分类</span>
                   </a>
                 </div>
@@ -2263,7 +2224,11 @@
                     
                       
                     
-                    <span class="site-state-item-count">5</span>
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">7</span>
                     <span class="site-state-item-name">标签</span>
                   </a>
                 </div>

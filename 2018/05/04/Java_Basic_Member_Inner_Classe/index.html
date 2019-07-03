@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="以下2个问题，你可以回答出来吗：  为什么成员内部类可以无条件访问外部类的成员？ 如果内部类只有一个private的构造函数，外部类还可以创建内部类的对象吗？">
+<meta name="keywords" content="Java">
+<meta property="og:type" content="article">
+<meta property="og:title" content="成员内部类">
+<meta property="og:url" content="http://yoursite.com/2018/05/04/Java_Basic_Member_Inner_Classe/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="以下2个问题，你可以回答出来吗：  为什么成员内部类可以无条件访问外部类的成员？ 如果内部类只有一个private的构造函数，外部类还可以创建内部类的对象吗？">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-05-11T14:23:01.399Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="成员内部类">
+<meta name="twitter:description" content="以下2个问题，你可以回答出来吗：  为什么成员内部类可以无条件访问外部类的成员？ 如果内部类只有一个private的构造函数，外部类还可以创建内部类的对象吗？">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2018/05/04/Java_Basic_Member_Inner_Classe/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>成员内部类 | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/05/04/Java_Basic_Member_Inner_Classe/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">成员内部类
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2018-05-04 22:36:00" itemprop="dateCreated datePublished" datetime="2018-05-04T22:36:00+08:00">2018-05-04</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-05-11 22:23:01" itemprop="dateModified" datetime="2019-05-11T22:23:01+08:00">2019-05-11</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/" itemprop="url" rel="index"><span itemprop="name">基础</span></a></span>
+
+                
+                
+                  ，
+                
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/基础/Java/" itemprop="url" rel="index"><span itemprop="name">Java</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>以下2个问题，你可以回答出来吗：</p>
+<ol>
+<li>为什么成员内部类可以无条件访问外部类的成员？</li>
+<li>如果内部类只有一个private的构造函数，外部类还可以创建内部类的对象吗？</li>
+</ol>
+<a id="more"></a>
+<p>先看以下示例代码:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line">class Outter &#123;</span><br><span class="line">  private Inner inner = null;</span><br><span class="line">  private int i = 0;</span><br><span class="line">  private int c = 1;</span><br><span class="line">  </span><br><span class="line">  public Outter() &#123;&#125;</span><br><span class="line">  </span><br><span class="line">  /*</span><br><span class="line">   *  在外部类中如果要访问成员内部类的成员，必须先创建一个成员内部类的对象，</span><br><span class="line">   *  再通过指向这个对象的引用来访问</span><br><span class="line">   */</span><br><span class="line">  public void accessInnerClass()&#123;</span><br><span class="line">    getInnerInstance().print();</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  public Inner getInnerInstance() &#123;</span><br><span class="line">    if(inner == null)</span><br><span class="line">      inner = new Inner();</span><br><span class="line">    return inner;</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  class Inner &#123;</span><br><span class="line">    private Inner()&#123;&#125;</span><br><span class="line">    private void print() &#123;</span><br><span class="line">      System.out.println(i);  //外部类的private成员</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    /*</span><br><span class="line">     * 成员内部类不能有static 的field 和 method.</span><br><span class="line">     * 原因 :</span><br><span class="line">     *    类加载顺序是先static然后instance的。</span><br><span class="line">    */</span><br><span class="line">//    private static int y = 0;</span><br><span class="line">//    private static void staticPrint() &#123;&#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="创建成员内部类对象"><a href="#创建成员内部类对象" class="headerlink" title="创建成员内部类对象"></a>创建成员内部类对象</h4><p>成员内部类是依附外部类而存在的，也就是说，如果要创建成员内部类的对象，前提是必须存在一个外部类的对象。有以下2种写法，虽然本质是一样的:</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">//第一种方式：</span><br><span class="line">Outter outter = new Outter();</span><br><span class="line">Outter.Inner inner = outter.new Inner();  //必须通过Outter对象来创建</span><br><span class="line"></span><br><span class="line">//第二种方式：</span><br><span class="line">Outter outter = new Outter();</span><br><span class="line">Outter.Inner inner1 = outter.getInnerInstance();</span><br></pre></td></tr></table></figure>
+<h4 id="为什么成员内部类可以无条件访问外部类的成员？"><a href="#为什么成员内部类可以无条件访问外部类的成员？" class="headerlink" title="为什么成员内部类可以无条件访问外部类的成员？"></a>为什么成员内部类可以无条件访问外部类的成员？</h4><p>我们通过java的反编译命令 javap 得到示例代码的内部类Inner的字节码。<br>其中有：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">final jvm.innerClass.Outter this$0;</span><br><span class="line">  descriptor: Ljvm/innerClass/Outter;</span><br><span class="line">  flags: ACC_FINAL, ACC_SYNTHETIC</span><br></pre></td></tr></table></figure></p>
+<p>ACC_SYNTHETIC表示是由编译器生成，而不是由用户编写的程序源代码经过编译器编译生成。<br>因此我们可以知道：<br>编译器会默认为成员内部类添加了一个指向外部类对象的引用。</p>
+<p>而这个引用是如何赋初值的呢？<br>字节码中有这个片段:<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">jvm.innerClass.Outter$Inner(jvm.innerClass.Outter, jvm.innerClass.Outter$Inner);</span><br><span class="line">  descriptor: (Ljvm/innerClass/Outter;Ljvm/innerClass/Outter$Inner;)V</span><br><span class="line">  flags: ACC_SYNTHETIC</span><br><span class="line">    Code:</span><br><span class="line">      stack=2, locals=3, args_size=3</span><br><span class="line">        0: aload_0</span><br><span class="line">        1: aload_1</span><br><span class="line">        2: invokespecial #45    // Method &quot;&lt;init&gt;&quot;:(Ljvm/innerClass/Outter;)V</span><br><span class="line">        5: return</span><br><span class="line">      LineNumberTable:</span><br><span class="line">        line 64: 0</span><br><span class="line">      LocalVariableTable:</span><br><span class="line">        Start  Length  Slot  Name   Signature</span><br></pre></td></tr></table></figure></p>
+<p>这是一个内部类的构造方法，虽然我们在代码中定义的是无参构造器，编译器还是会默认添加一个参数，该参数的类型为指向外部类对象的一个引用，所以成员内部类中的 this$0 指针便指向了外部类对象，因此可以在成员内部类中随意访问外部类的成员。</p>
+<p>而这也间接说明了成员内部类是依赖于外部类的，如果没有创建外部类的对象，则无法对this$0引用进行初始化赋值，也就无法创建成员内部类的对象了。</p>
+<p>那么为什么连 OutterClass 的 private 成员也可以访问呢？<br>通过查看 OutterClass 的字节码，我们发现:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">static int access$0(jvm.innerClass.Outter);</span><br><span class="line">  descriptor: (Ljvm/innerClass/Outter;)I</span><br><span class="line">  flags: ACC_STATIC, ACC_SYNTHETIC</span><br><span class="line">    Code:</span><br><span class="line">      stack=1, locals=1, args_size=1</span><br><span class="line">        0: aload_0</span><br><span class="line">        1: getfield    #17        // Field i:I</span><br><span class="line">        4: ireturn</span><br><span class="line">      LineNumberTable:</span><br><span class="line">        line 42: 0</span><br><span class="line">      LocalVariableTable:</span><br><span class="line">        Start  Length  Slot  Name   Signature</span><br><span class="line">        </span><br><span class="line">static int access$1(jvm.innerClass.Outter);</span><br><span class="line">  descriptor: (Ljvm/innerClass/Outter;)I</span><br><span class="line">  flags: ACC_STATIC, ACC_SYNTHETIC</span><br><span class="line">    Code:</span><br><span class="line">      stack=1, locals=1, args_size=1</span><br><span class="line">        0: aload_0</span><br><span class="line">        1: getfield    #19       // Field c:I</span><br><span class="line">        4: ireturn</span><br><span class="line">      LineNumberTable:</span><br><span class="line">        line 43: 0</span><br><span class="line">      LocalVariableTable:</span><br><span class="line">        Start  Length  Slot  Name   Signature</span><br></pre></td></tr></table></figure>
+<p>access$0 和access$1 方法都是由编译器生成的，这2个方法分别用于返回外部类 Outter 的 “i”、“c” 这2个field。<br>所以，内部类中调用 System.out.println(i)，实际上运行的时候调用的是：<br>System.out.println(this$0.access$0(this$0));</p>
+<h4 id="如果内部类只有一个private的构造函数，外部类还可以创建内部类的对象吗？"><a href="#如果内部类只有一个private的构造函数，外部类还可以创建内部类的对象吗？" class="headerlink" title="如果内部类只有一个private的构造函数，外部类还可以创建内部类的对象吗？"></a>如果内部类只有一个private的构造函数，外部类还可以创建内部类的对象吗？</h4><p>从示例代码可以看出，虽然内部类Inner的构造器是private，但是外部类Outter依然可以创建内部类的对象，为什么？</p>
+<ol>
+<li>首先编译器将外、内部类编译后放在同一个包中。</li>
+<li>编译器帮我们在内部类创建了包可见构造器，从而使外部类获得了创建权限。</li>
+</ol>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Java/" rel="tag"># Java</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2018/05/04/Java_Basic_Local_Inner_Class/" rel="next" title="局部内部类">
+                <i class="fa fa-chevron-left"></i> 局部内部类
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2018/05/04/Java_Basic_Static_Inner_Class/" rel="prev" title="静态内部类">
+                静态内部类 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">34</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">5</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">7</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#创建成员内部类对象"><span class="nav-number">1.</span> <span class="nav-text">创建成员内部类对象</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#为什么成员内部类可以无条件访问外部类的成员？"><span class="nav-number">2.</span> <span class="nav-text">为什么成员内部类可以无条件访问外部类的成员？</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#如果内部类只有一个private的构造函数，外部类还可以创建内部类的对象吗？"><span class="nav-number">3.</span> <span class="nav-text">如果内部类只有一个private的构造函数，外部类还可以创建内部类的对象吗？</span></a></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

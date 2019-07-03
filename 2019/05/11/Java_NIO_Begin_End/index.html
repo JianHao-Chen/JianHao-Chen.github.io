@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="在之前一篇文章提过，阻塞于InterruptibleChannel的线程，可以通过如下2种方式“唤醒”：  InterruptibleChannel的Close方法 Thread的interrupt方法  其中，close方法已经介绍过了，这篇文章介绍Thread的interrupt方法是如何“唤醒”阻塞于InterruptibleChannel的线程的。实际上，Thread的interrupt方">
+<meta name="keywords" content="Java,NIO">
+<meta property="og:type" content="article">
+<meta property="og:title" content="NIO里面的begin和end方法">
+<meta property="og:url" content="http://yoursite.com/2019/05/11/Java_NIO_Begin_End/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="在之前一篇文章提过，阻塞于InterruptibleChannel的线程，可以通过如下2种方式“唤醒”：  InterruptibleChannel的Close方法 Thread的interrupt方法  其中，close方法已经介绍过了，这篇文章介绍Thread的interrupt方法是如何“唤醒”阻塞于InterruptibleChannel的线程的。实际上，Thread的interrupt方">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-07-02T04:05:00.628Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="NIO里面的begin和end方法">
+<meta name="twitter:description" content="在之前一篇文章提过，阻塞于InterruptibleChannel的线程，可以通过如下2种方式“唤醒”：  InterruptibleChannel的Close方法 Thread的interrupt方法  其中，close方法已经介绍过了，这篇文章介绍Thread的interrupt方法是如何“唤醒”阻塞于InterruptibleChannel的线程的。实际上，Thread的interrupt方">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2019/05/11/Java_NIO_Begin_End/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>NIO里面的begin和end方法 | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/05/11/Java_NIO_Begin_End/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">NIO里面的begin和end方法
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-05-11 08:55:00" itemprop="dateCreated datePublished" datetime="2019-05-11T08:55:00+08:00">2019-05-11</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-07-02 12:05:00" itemprop="dateModified" datetime="2019-07-02T12:05:00+08:00">2019-07-02</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/NIO/" itemprop="url" rel="index"><span itemprop="name">NIO</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>在之前一篇文章提过，阻塞于<code>InterruptibleChannel</code>的线程，可以通过如下2种方式“唤醒”：</p>
+<ul>
+<li>InterruptibleChannel的<code>Close</code>方法</li>
+<li>Thread的<code>interrupt</code>方法</li>
+</ul>
+<p>其中，<code>close</code>方法已经介绍过了，这篇文章介绍Thread的<code>interrupt</code>方法是如何“唤醒”阻塞于<code>InterruptibleChannel</code>的线程的。<br>实际上，Thread的<code>interrupt</code>方法同样可以“唤醒”阻塞于Selector的<code>select</code>操作的线程。</p>
+<a id="more"></a>
+<h3 id="begin-amp-end-的用途"><a href="#begin-amp-end-的用途" class="headerlink" title="begin() &amp; end()的用途"></a>begin() &amp; end()的用途</h3><p>当一个线程阻塞于Selector或Channel的I/O操作，如果此时这个线程被中断了，那么<code>begin()</code>和<code>end()</code>方法就是用于通知这个Selector或Channel。</p>
+<p>一般begin()  &amp;  end()的用法如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">try &#123;</span><br><span class="line">    begin();</span><br><span class="line">    // Perform blocking I/O operation here</span><br><span class="line">    ...</span><br><span class="line">&#125; finally &#123;</span><br><span class="line">    end();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h3 id="selector的-begin-amp-end"><a href="#selector的-begin-amp-end" class="headerlink" title="selector的 begin() &amp; end()"></a>selector的 begin() &amp; end()</h3><p><code>AbstractSelector</code>的begin()和end()方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * Marks the beginning of an I/O operation that might block indefinitely.</span><br><span class="line"> *</span><br><span class="line"> * &lt;p&gt; This method should be invoked in tandem with the &#123;@link #end end&#125;</span><br><span class="line"> * method, using a &lt;tt&gt;try&lt;/tt&gt;&amp;nbsp;...&amp;nbsp;&lt;tt&gt;finally&lt;/tt&gt; block as</span><br><span class="line"> * shown &lt;a href=&quot;#be&quot;&gt;above&lt;/a&gt;, in order to implement interruption for</span><br><span class="line"> * this selector.</span><br><span class="line"> *</span><br><span class="line"> * &lt;p&gt; Invoking this method arranges for the selector&apos;s &#123;@link</span><br><span class="line"> * Selector#wakeup wakeup&#125; method to be invoked if a thread&apos;s &#123;@link</span><br><span class="line"> * Thread#interrupt interrupt&#125; method is invoked while the thread is</span><br><span class="line"> * blocked in an I/O operation upon the selector.  &lt;/p&gt;</span><br><span class="line"> */</span><br><span class="line">protected final void begin() &#123;</span><br><span class="line">    if (interruptor == null) &#123;</span><br><span class="line">        interruptor = new Interruptible() &#123;</span><br><span class="line">                public void interrupt(Thread ignore) &#123;</span><br><span class="line">                    AbstractSelector.this.wakeup();</span><br><span class="line">                &#125;&#125;;</span><br><span class="line">    &#125;</span><br><span class="line">    AbstractInterruptibleChannel.blockedOn(interruptor);</span><br><span class="line">    Thread me = Thread.currentThread();</span><br><span class="line">    if (me.isInterrupted())</span><br><span class="line">        interruptor.interrupt(me);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">/**</span><br><span class="line"> * Marks the end of an I/O operation that might block indefinitely.</span><br><span class="line"> *</span><br><span class="line"> * &lt;p&gt; This method should be invoked in tandem with the &#123;@link #begin begin&#125;</span><br><span class="line"> * method, using a &lt;tt&gt;try&lt;/tt&gt;&amp;nbsp;...&amp;nbsp;&lt;tt&gt;finally&lt;/tt&gt; block as</span><br><span class="line"> * shown &lt;a href=&quot;#be&quot;&gt;above&lt;/a&gt;, in order to implement interruption for</span><br><span class="line"> * this selector.  &lt;/p&gt;</span><br><span class="line"> */</span><br><span class="line">protected final void end() &#123;</span><br><span class="line">    AbstractInterruptibleChannel.blockedOn(null);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h4 id="AbstractInterruptibleChannel的blockedOn方法"><a href="#AbstractInterruptibleChannel的blockedOn方法" class="headerlink" title="AbstractInterruptibleChannel的blockedOn方法"></a>AbstractInterruptibleChannel的blockedOn方法</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">static void blockedOn(Interruptible intr) &#123;         // package-private</span><br><span class="line">    sun.misc.SharedSecrets.getJavaLangAccess().blockedOn(Thread.currentThread(),intr);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这里<code>getJavaLangAccess</code>方法就不研究了，简单的说就是，调用了Thread 类的<code>blockedOn</code>方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">/* The object in which this thread is blocked in an interruptible I/O</span><br><span class="line"> * operation, if any.  The blocker&apos;s interrupt method should be invoked</span><br><span class="line"> * after setting this thread&apos;s interrupt status.</span><br><span class="line"> */</span><br><span class="line">private volatile Interruptible blocker;</span><br><span class="line">private final Object blockerLock = new Object();</span><br><span class="line"></span><br><span class="line">/* Set the blocker field; invoked via sun.misc.SharedSecrets from java.nio code</span><br><span class="line"> */</span><br><span class="line">void blockedOn(Interruptible b) &#123;</span><br><span class="line">    synchronized (blockerLock) &#123;</span><br><span class="line">        blocker = b;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>原来Thread类中包含Interruptible的私有成员blocker，blockedOn只是给它赋值而已。</p>
+<p>继续看 Thread 的<code>interrupt</code>方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * Interrupts this thread.</span><br><span class="line"> *</span><br><span class="line"> * ..... 省略</span><br><span class="line"> *</span><br><span class="line"> * &lt;p&gt; If this thread is blocked in an I/O operation upon an &#123;@link</span><br><span class="line"> * java.nio.channels.InterruptibleChannel InterruptibleChannel&#125;</span><br><span class="line"> * then the channel will be closed, the thread&apos;s interrupt</span><br><span class="line"> * status will be set, and the thread will receive a &#123;@link</span><br><span class="line"> * java.nio.channels.ClosedByInterruptException&#125;.</span><br><span class="line"> *</span><br><span class="line"> * &lt;p&gt; If this thread is blocked in a &#123;@link java.nio.channels.Selector&#125;</span><br><span class="line"> * then the thread&apos;s interrupt status will be set and it will return</span><br><span class="line"> * immediately from the selection operation, possibly with a non-zero</span><br><span class="line"> * value, just as if the selector&apos;s &#123;@link</span><br><span class="line"> * java.nio.channels.Selector#wakeup wakeup&#125; method were invoked.</span><br><span class="line"> * ..... 省略</span><br><span class="line"> */     </span><br><span class="line">public void interrupt() &#123;</span><br><span class="line">    if (this != Thread.currentThread())</span><br><span class="line">        checkAccess();</span><br><span class="line"></span><br><span class="line">    synchronized (blockerLock) &#123;</span><br><span class="line">        Interruptible b = blocker;</span><br><span class="line">        if (b != null) &#123;</span><br><span class="line">            interrupt0();           // Just to set the interrupt flag</span><br><span class="line">            b.interrupt(this);</span><br><span class="line">            return;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    interrupt0();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>关键点在<code>b.interrupt(this);</code>这行代码，它调用了<code>Interruptible</code>的<code>interrupt</code>方法，在<code>AbstractSelector</code>里面就是<code>AbstractSelector.this.wakeup();</code>。这个跟注释里说的一样，相当于调用了 Selector的wakeUp方法。</p>
+<h4 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h4><p>begin和end方法都用到了<code>AbstractInterruptibleChannel.blockOn()</code>：我们可以理解为，如果线程被中断，就附带执行我的这个interrupt方法吧。</p>
+<h3 id="Channel的-begin-amp-end"><a href="#Channel的-begin-amp-end" class="headerlink" title="Channel的 begin() &amp; end()"></a>Channel的 begin() &amp; end()</h3><p>AbstractInterruptibleChannel的<code>begin()</code>和<code>end()</code>：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">protected final void begin() &#123;</span><br><span class="line">    if (interruptor == null) &#123;</span><br><span class="line">        interruptor = new Interruptible() &#123;</span><br><span class="line">                public void interrupt(Thread target) &#123;</span><br><span class="line">                    synchronized (closeLock) &#123;</span><br><span class="line">                        if (!open)</span><br><span class="line">                            return;</span><br><span class="line">                        open = false;</span><br><span class="line">                        interrupted = target;</span><br><span class="line">                        try &#123;</span><br><span class="line">                            AbstractInterruptibleChannel.this.implCloseChannel();</span><br><span class="line">                        &#125; catch (IOException x) &#123; &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;&#125;;</span><br><span class="line">    &#125;</span><br><span class="line">    blockedOn(interruptor);</span><br><span class="line">    Thread me = Thread.currentThread();</span><br><span class="line">    if (me.isInterrupted())</span><br><span class="line">        interruptor.interrupt(me);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">protected final void end(boolean completed)</span><br><span class="line">        throws AsynchronousCloseException</span><br><span class="line">&#123;</span><br><span class="line">    blockedOn(null);</span><br><span class="line">    Thread interrupted = this.interrupted;</span><br><span class="line">    if (interrupted != null &amp;&amp; interrupted == Thread.currentThread()) &#123;</span><br><span class="line">        interrupted = null;</span><br><span class="line">        throw new ClosedByInterruptException();</span><br><span class="line">    &#125;</span><br><span class="line">    if (!completed &amp;&amp; !open)</span><br><span class="line">        throw new AsynchronousCloseException();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>这里，AbstractInterruptibleChannel是通过<code>implCloseChannel()</code>方法来实现Channel的关闭的。</p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><ol>
+<li>begin()、end()都用到了<code>AbstractInterruptibleChannel.blockedOn(Interruptible intr)</code>方法，begin方法其实是赋值Thread类的私有变量 blocker，而end方法是将bloacker置为null。</li>
+<li>当Thread被中断了，会调用这个blocker的interrupt()方法，这个方法调用<code>Selector.wakeup()</code>或<code>AbstractInterruptibleChannel.implCloseChannel()</code>，来实现通知Selector、关闭通道。</li>
+</ol>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Java/" rel="tag"># Java</a>
+          
+            <a href="/tags/NIO/" rel="tag"># NIO</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/05/10/Java_NIO_Selector_WakeUp/" rel="next" title="Selector的wakeup方法">
+                <i class="fa fa-chevron-left"></i> Selector的wakeup方法
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/05/12/Java_NIO_AsynchronousChannel/" rel="prev" title="NIO的异步Channel">
+                NIO的异步Channel <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">34</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">5</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">7</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#begin-amp-end-的用途"><span class="nav-number">1.</span> <span class="nav-text">begin() &amp; end()的用途</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#selector的-begin-amp-end"><span class="nav-number">2.</span> <span class="nav-text">selector的 begin() &amp; end()</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#AbstractInterruptibleChannel的blockedOn方法"><span class="nav-number">2.1.</span> <span class="nav-text">AbstractInterruptibleChannel的blockedOn方法</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#小结"><span class="nav-number">2.2.</span> <span class="nav-text">小结</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Channel的-begin-amp-end"><span class="nav-number">3.</span> <span class="nav-text">Channel的 begin() &amp; end()</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#总结"><span class="nav-number">4.</span> <span class="nav-text">总结</span></a></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
