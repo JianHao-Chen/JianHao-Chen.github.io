@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="Minor GC只收集young generation，而使用Serial GC时这个young generation的实现类叫做DefNewGeneration。 HotSpot VM Serial GC 的 minor GC使用的是Cheney算法的变种！ 下面的内容来自：https://hllvm-group.iteye.com/group/topic/39376">
+<meta name="keywords" content="JVM">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Serial GC的minor GC算法">
+<meta property="og:url" content="http://yoursite.com/2019/06/17/JVM_GC_SerialGC/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="Minor GC只收集young generation，而使用Serial GC时这个young generation的实现类叫做DefNewGeneration。 HotSpot VM Serial GC 的 minor GC使用的是Cheney算法的变种！ 下面的内容来自：https://hllvm-group.iteye.com/group/topic/39376">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="http://upload.wikimedia.org/wikipedia/commons/4/46/Animated_BFS.gif">
+<meta property="og:updated_time" content="2019-07-04T09:33:20.229Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Serial GC的minor GC算法">
+<meta name="twitter:description" content="Minor GC只收集young generation，而使用Serial GC时这个young generation的实现类叫做DefNewGeneration。 HotSpot VM Serial GC 的 minor GC使用的是Cheney算法的变种！ 下面的内容来自：https://hllvm-group.iteye.com/group/topic/39376">
+<meta name="twitter:image" content="http://upload.wikimedia.org/wikipedia/commons/4/46/Animated_BFS.gif">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2019/06/17/JVM_GC_SerialGC/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Serial GC的minor GC算法 | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/06/17/JVM_GC_SerialGC/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Serial GC的minor GC算法
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-06-17 08:55:00" itemprop="dateCreated datePublished" datetime="2019-06-17T08:55:00+08:00">2019-06-17</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-07-04 17:33:20" itemprop="dateModified" datetime="2019-07-04T17:33:20+08:00">2019-07-04</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/JVM/" itemprop="url" rel="index"><span itemprop="name">JVM</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>Minor GC只收集young generation，而使用Serial GC时这个young generation的实现类叫做<code>DefNewGeneration</code>。</p>
+<p>HotSpot VM Serial GC 的 minor GC使用的是Cheney算法的变种！</p>
+<p>下面的内容来自：<a href="https://hllvm-group.iteye.com/group/topic/39376">https://hllvm-group.iteye.com/group/topic/39376</a></p>
+<a id="more"></a>
+<h3 id="Cheney算法"><a href="#Cheney算法" class="headerlink" title="Cheney算法"></a>Cheney算法</h3><p>Tracing GC的核心操作之一就是从给定的根集合出发去遍历对象图。对象图是一种有向图，该图的节点是对象，边是引用。遍历它有两种典型顺序：深度优先（DFS）和广度优先（BFS）。 </p>
+<p>广度优先遍历的典型实现思路是三色遍历：给对象赋予白、灰、黑三种颜色以标记其遍历状态： </p>
+<ul>
+<li>白色：未遍历到的对象 </li>
+<li>灰色：已遍历到但还未处理完的对象（意味着该对象尚有未遍历到的出边） </li>
+<li>黑色：已遍历完的对象 </li>
+</ul>
+<p>从Wikipedia引用一张动画图来演示三色遍历：<br><br><img src="http://upload.wikimedia.org/wikipedia/commons/4/46/Animated_BFS.gif" alt="image"></p>
+<p>遍历过程： </p>
+<ol>
+<li>一开始，所有对象都是白色的； </li>
+<li>把根集合能直接碰到的对象标记为灰色。在只有一个根对象的地方就只要把那个对象标记为灰色。但GC通常不是只有一个特定根对象，而是有一个集合的引用作为根，这些引用能直接碰到的对象都要标记为灰色。 </li>
+<li>然后逐个扫描灰色对象的出边，把这些边能直接碰到的对象标记为灰色。每当一个对象的所有出边都扫描完了，就把这个对象标记为黑色。 </li>
+<li>重复第3步直到不再有灰色对象，遍历结束。</li>
+</ol>
+<p>实现上面算法有多中：</p>
+<h4 id="使用一个队列（queue）与一个集合（set）："><a href="#使用一个队列（queue）与一个集合（set）：" class="headerlink" title="使用一个队列（queue）与一个集合（set）："></a>使用一个队列（queue）与一个集合（set）：</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">void breadth_first_search(Node* root_node) &#123;  </span><br><span class="line">  // 记录灰色对象的队列  </span><br><span class="line">  Queue&lt;Node*&gt; scanning;  </span><br><span class="line">  // 记录黑色对象的集合  </span><br><span class="line">  Set&lt;Node*&gt;   scanned;  </span><br><span class="line">  </span><br><span class="line">  // 1. 一开始对象都是白色的  </span><br><span class="line">  </span><br><span class="line">  // 2. 把根对象标记为灰色  </span><br><span class="line">  scanned.add(root_node);  </span><br><span class="line">  scanning.enqueue(root_node);  </span><br><span class="line">  </span><br><span class="line">  // 3. 逐个扫描灰色对象的出边直到没有灰色对象  </span><br><span class="line">  while (!scanning.is_empty()) &#123;  </span><br><span class="line">    Node* parent = scanning.dequeue();  </span><br><span class="line">    for (Node* child : parent-&gt;child_nodes() &#123; // 扫描灰色对象的出边  </span><br><span class="line">      // 如果出边指向的对象还没有被扫描过  </span><br><span class="line">      if (child != nullptr &amp;&amp; !scanned.contains(child)) &#123;  </span><br><span class="line">        scanned.add(child);      // 记录下它已经被扫描到了  </span><br><span class="line">        scanning.enqueue(child); // 也把该对象放进灰色队列里等待扫描  </span><br><span class="line">      &#125;  </span><br><span class="line">    &#125;  </span><br><span class="line">  &#125;  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在这种伪代码中，队列scanning与集合scanned组合起来记录了对象的颜色： </p>
+<ul>
+<li>所有没进入过scanning队列的对象是白色的； </li>
+<li>进入了scanning队列与scanned集合，但还没离开scanning队列的对象是灰色的； </li>
+<li>离开了scanning队列并且在scanned集合里的对象是黑色的。</li>
+</ul>
+<h4 id="只用一个队列（对象内可以记录遍历状态）"><a href="#只用一个队列（对象内可以记录遍历状态）" class="headerlink" title="只用一个队列（对象内可以记录遍历状态）"></a>只用一个队列（对象内可以记录遍历状态）</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">void breadth_first_search(Node* root_node) &#123;  </span><br><span class="line">  // 记录灰色对象的队列  </span><br><span class="line">  Queue&lt;Node*&gt; scanning;  </span><br><span class="line">  </span><br><span class="line">  // 1. 一开始对象都是白色的  </span><br><span class="line">  </span><br><span class="line">  // 2. 把根对象标记为灰色  </span><br><span class="line">  root_node-&gt;set_marked();  </span><br><span class="line">  scanning.enqueue(root_node);  </span><br><span class="line">  </span><br><span class="line">  // 3. 逐个扫描灰色对象的出边直到没有灰色对象  </span><br><span class="line">  while (!scanning.is_empty()) &#123;  </span><br><span class="line">    Node* parent = scanning.dequeue();  </span><br><span class="line">    for (Node* child : parent-&gt;child_nodes() &#123; // 扫描灰色对象的出边  </span><br><span class="line">      // 如果出边指向的对象还没有被扫描过  </span><br><span class="line">      if (child != nullptr &amp;&amp; !child-&gt;is_marked()) &#123;  </span><br><span class="line">        child-&gt;set_marked();        // 记录下它已经被扫描到了  </span><br><span class="line">        scanning.enqueue(child); // 也把该对象放进灰色队列里等待扫描  </span><br><span class="line">      &#125;  </span><br><span class="line">    &#125;  </span><br><span class="line">  &#125;  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面两个版本是有且只有一个特殊对象作为根对象的有向图的广度优先遍历。假如不是这样而是有一个集合的引用作为根的话，算法会变为：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">void breadth_first_search(Graph* graph) &#123;  </span><br><span class="line">  // 记录灰色对象的队列  </span><br><span class="line">  Queue&lt;Node*&gt; scanning;  </span><br><span class="line">  </span><br><span class="line">  // 1. 一开始对象都是白色的  </span><br><span class="line">  </span><br><span class="line">  // 2. 把根集合的引用能碰到的对象标记为灰色  </span><br><span class="line">  // 由于根集合的引用有可能有重复，所以这里也必须  </span><br><span class="line">  // 在把对象加入队列前先检查它是否已经被扫描到了  </span><br><span class="line">  for (Node* node : graph-&gt;root_edges()) &#123;  </span><br><span class="line">    // 如果出边指向的对象还没有被扫描过  </span><br><span class="line">    if (node != nullptr &amp;&amp; !node-&gt;is_marked()) &#123;  </span><br><span class="line">      node-&gt;set_marked();        // 记录下它已经被扫描到了  </span><br><span class="line">      scanning.enqueue(child); // 也把该对象放进灰色队列里等待扫描  </span><br><span class="line">    &#125;  </span><br><span class="line">  &#125;  </span><br><span class="line">  </span><br><span class="line">  // 3. 逐个扫描灰色对象的出边直到没有灰色对象  </span><br><span class="line">  while (!scanning.is_empty()) &#123;  </span><br><span class="line">    Node* parent = scanning.dequeue();  </span><br><span class="line">    for (Node* child : parent-&gt;child_nodes() &#123; // 扫描灰色对象的出边  </span><br><span class="line">      // 如果出边指向的对象还没有被扫描过  </span><br><span class="line">      if (child != nullptr &amp;&amp; !child-&gt;is_marked()) &#123;  </span><br><span class="line">        child-&gt;set_marked();       // 把它记录到黑色集合里  </span><br><span class="line">        scanning.enqueue(child); // 也把该对象放进灰色队列里等待扫描  </span><br><span class="line">      &#125;  </span><br><span class="line">    &#125;  </span><br><span class="line">  &#125;  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h4 id="Cheney算法的伪代码"><a href="#Cheney算法的伪代码" class="headerlink" title="Cheney算法的伪代码"></a>Cheney算法的伪代码</h4><p>Cheney算法正如上面说的一样，用一个队列来实现对象图的遍历。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><span class="line">void garbage_collect(Heap* heap) &#123;  </span><br><span class="line">  Semispace* to_space = heap-&gt;to_space();  </span><br><span class="line">  </span><br><span class="line">  // 记录灰色对象的队列：从scanned到to_space-&gt;top()  </span><br><span class="line">  address scanned = to_space-&gt;bottom();  </span><br><span class="line">  </span><br><span class="line">  // 1. 一开始对象都是白色的  </span><br><span class="line">  </span><br><span class="line">  // 2. 把根集合的引用能碰到的对象标记为灰色  </span><br><span class="line">  // 由于根集合的引用有可能有重复，所以这里也必须  </span><br><span class="line">  // 在把对象加入队列前先检查它是否已经被扫描到了  </span><br><span class="line">  for (Object** refLoc : heap-&gt;root_reference_locations()) &#123;  </span><br><span class="line">    Object* obj = *refLoc;  </span><br><span class="line">    if (obj != nullptr) &#123;  </span><br><span class="line">      if (!obj-&gt;is_forwarded()) &#123;  </span><br><span class="line">        // 记录下它已经被扫描到了，也把该对象放进灰色队列里等待扫描  </span><br><span class="line">        size_t size = obj-&gt;size();  </span><br><span class="line">        address new_addr = to_space-&gt;allocate(size);  </span><br><span class="line">  </span><br><span class="line">        // address Semispace::allocate(size_t size) &#123;  </span><br><span class="line">        //   if (_top + size &lt; _end) &#123;  </span><br><span class="line">        //     address new_addr = _top;  </span><br><span class="line">        //     _top += size;  </span><br><span class="line">        //     return new_addr;  </span><br><span class="line">        //   &#125; else &#123;  </span><br><span class="line">        //     return nullptr;  </span><br><span class="line">        //   &#125;  </span><br><span class="line">        // &#125;  </span><br><span class="line">  </span><br><span class="line">        // to_space-&gt;allocate()移动了to_space-&gt;top()指针，  </span><br><span class="line">        // 等同于scanning.enqueue(obj);  </span><br><span class="line">          </span><br><span class="line">        copy(/* to */ new_addr, /* from */ obj, size);  </span><br><span class="line">        Object* new_obj = (Object*) new_addr;  </span><br><span class="line">        obj-&gt;forward_to(new_obj);   // 设置转发指针（forwarding pointer）  </span><br><span class="line">        *refLoc = new_obj;          // 修正指针指向新对象  </span><br><span class="line">      &#125; else &#123;  </span><br><span class="line">        *refLoc = obj-&gt;forwardee(); // 修正指针指向新对象  </span><br><span class="line">      &#125;  </span><br><span class="line">    &#125;  </span><br><span class="line">  &#125;  </span><br><span class="line">  </span><br><span class="line">  // 3. 逐个扫描灰色对象的出边直到没有灰色对象  </span><br><span class="line">  while (scanned &lt; to_space-&gt;top()) &#123;  </span><br><span class="line">    Object* parent = (Object*) scanned;  </span><br><span class="line">    // 扫描灰色对象的出边  </span><br><span class="line">    for (Object** fieldLoc : parent-&gt;object_fields()) &#123;  </span><br><span class="line">      Object* obj = *fieldLoc;  </span><br><span class="line">      // 如果出边指向的对象还没有被扫描过  </span><br><span class="line">      if (obj != nullptr) &#123;  </span><br><span class="line">        if (!obj-&gt;is_forwarded()) &#123;     // 尚未被扫描过的对象  </span><br><span class="line">          // 记录下它已经被扫描到了，也把该对象放进灰色队列里等待扫描  </span><br><span class="line">          size_t size = obj-&gt;size();  </span><br><span class="line">          address new_addr = to_space-&gt;allocate(size);  </span><br><span class="line">  </span><br><span class="line">          // to_space-&gt;allocate()移动了to_space-&gt;top()指针，  </span><br><span class="line">          // 等同于scanning.enqueue(obj);  </span><br><span class="line">  </span><br><span class="line">          copy(/* to */ new_addr, /* from */ obj, size);  </span><br><span class="line">          Object* new_obj = (Object*) new_addr;  </span><br><span class="line">          obj-&gt;forward_to(new_obj);     // 设置转发指针（forwarding pointer）  </span><br><span class="line">          *fieldLoc = new_obj;          // 修正指针指向新对象  </span><br><span class="line">        &#125; else &#123;                        // 已经扫描过的对象  </span><br><span class="line">          *fieldLoc = obj-&gt;forwardee(); // 修正指针指向新对象  </span><br><span class="line">        &#125;  </span><br><span class="line">      &#125;  </span><br><span class="line">    &#125;  </span><br><span class="line">    scanned += parent-&gt;size();  </span><br><span class="line">    // 移动scanned指针等同于scanning.dequeue(parent);  </span><br><span class="line">  &#125;  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>它的设计非常精妙： </p>
+<ul>
+<li>它使用一块连续的地址空间来实现GC堆，并将其划分为2个半分空间（semispace），分别称为from-space与to-space。平时只用其中一个，也就是from-space； </li>
+<li>逐个扫描指针，每扫描到一个对象的时候就把它从from-space拷贝到to-space，并在原来的对象里记录下一个转发指针（forwarding pointer），记住该对象被拷贝到哪里了。要知道一个对象有没有被扫描（标记）过，只要看该对象是否有转发指针即可； </li>
+<li>==每扫描完一个指针就顺便把该指针修正为指向拷贝后的新对象。这样，对象的标记（mark）、整理（compaction）、指针的修正就合起来在一步都做好了==； </li>
+<li>它不需要显式为扫描队列分配空间，而是复用了to-space的一部分用作隐式队列。用一个scanned指针来区分to-space的对象的颜色：<ul>
+<li>在to-space开头到scanned指针之间的对象是黑色的</li>
+<li>在scanned指针到to-space已分配对象的区域的末尾之间的对象是灰色的。</li>
+<li>如何知道还有没有灰色对象呢？只要scanned追上了to-space已分配对象区域的末尾就好了。</li>
+<li>这种做法也叫做“两手指”（two-finger）：“scanned”与“free”。只需要这两个指针就能维护隐式扫描队列。“free”在我的伪代码里就是to_space-&gt;top()。 </li>
+</ul>
+</li>
+</ul>
+<p>Cheney算法GC工作时，to-space中各指针的样子如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">|[ 已分配并且已扫描完的对象 ]|[ 已分配但未扫描完的对象 ]|[ 未分配空间 ]|</span><br><span class="line">^                        ^                      ^             ^</span><br><span class="line">bottom                   scanned                top           end</span><br></pre></td></tr></table></figure></p>
+<p>在GC结束时，不需要对原本的from-space做什么清理动作，只要把它的分配指针（top）设回到初始位置（bottom）即可。之前在里面的对象就当作不存在了。自然，也就不需要清理其中设置了的转发指针。 </p>
+<p>Cheney算法是一个非常非常简单且高效的GC算法。但为啥很多简易的VM宁可采用mark-sweep而不用Cheney算法的copying GC呢？ <font color="brown">因为mark-sweep GC的常规实现不移动对象，而copying GC必须移动对象。移动对象意味着使用GC的程序（术语叫做mutator）需要做更多事情，例如说要能准确定位到所有的指针，以便在对象移动之后修正指针。很多简易VM都偷懒不想记住所有指针的位置，所以无法支持copying GC。</font></p>
+<p>Cheney算法的简单优雅之处来自它通过隐式队列来实现广度优先遍历，但它的缺点之一却也在此：广度优先的拷贝顺序使得GC后对象的空间局部性（memory locality）变差了。但是如果要改为真的深度优先顺序就会需要一个栈，无论是隐式（通常意味着递归调用）或者是显式。<br>使用递归实现的隐患是容易爆栈，有没有啥办法模拟深度优先的拷贝顺序但不用栈呢？这方面有很多研究。其中一种有趣的做法是IBM的hierarchical copying GC，参考：Improving Locality with Parallel Hierarchical Copying GC </p>
+<h3 id="HotSpot-VM-Serial-GC的实现"><a href="#HotSpot-VM-Serial-GC的实现" class="headerlink" title="HotSpot VM Serial GC的实现"></a>HotSpot VM Serial GC的实现</h3><h4 id="与Cheney算法的异同"><a href="#与Cheney算法的异同" class="headerlink" title="与Cheney算法的异同"></a>与Cheney算法的异同</h4><p>相同点： </p>
+<ol>
+<li>使用广度优先遍历； </li>
+<li>使用隐式队列； </li>
+<li>copy等同mark + relocate (compact) + remap (pointer fixup)三件事一步完成。</li>
+</ol>
+<p>相异点： </p>
+<ol>
+<li>基本Cheney算法不分代，而HotSpot的GC分两代 </li>
+<li>基本Cheney算法使用2个半分空间（semispace），而HotSpot的GC在young generation使用3个空间——1个eden与两个survivor space。注意这两个survivor space就与semispace的作用类似。 </li>
+</ol>
+<h4 id="一些Serial-GC的实现要点"><a href="#一些Serial-GC的实现要点" class="headerlink" title="一些Serial GC的实现要点"></a>一些Serial GC的实现要点</h4><ul>
+<li>基本Cheney算法用from-space和to-space，而HotSpot VM的DefNewGeneration有三个空间，eden space、from-space、to-space。后者的eden space + from-space大致等于前者的from-space，而后者的to-space + old gen的一部分大致等于前者的to-space。 </li>
+<li>拷贝对象的目标空间不一定是to-space，也有可能是old generation，也就是对象有可能会从young generation晋升到old generation。<br>为了实现这一功能，对象头的mark word里有一小块地方记录对象的年龄（age），也就是该对象经历了多少次minor GC。如果扫描到一个对象，并且其年龄大于某个阈值（tenuring threshold），则该对象会被拷贝到old generation；如果年龄不大于那个阈值则拷贝到to-space。<br>要留意的是，基本Cheney算法中2个半分空间通常一样大，所以可以保证所有from-space里活着的对象都能在to-space里找到位置。但HotSpot VM的from-space与to-space通常比eden space小得多，不一定能容纳下所有活的对象。如果一次minor GC的过程中，to-space已经装满之后还遇到活对象要拷贝，则剩下的对象都得晋升到old generation去。这种现象叫做过早晋升（premature tenuring），要尽量避免。</li>
+<li>既然拷贝去的目标空间不一定是to-space，那原本Cheney算法里的隐式扫描队列会在哪里？<br>答案是既在to-space，也在old generation。很简单，在这两个空间都记录它们的scanned指针（叫做“saved mark”），这俩空间各自原本也记录着它们的分配指针（“top”），之间的部分就用作扫描队列。</li>
+<li>Forwarding pointer安装在对象（oopDesc）头部的mark word（markOop）里。只有在minor GC的时候才会把已拷贝的对象的mark word借用来放转发指针。 </li>
+<li>通过回调，把遍历逻辑与实际动作分离。例如说，遍历根集合的逻辑封装在GenCollectedHeap::gen_process_strong_roots()、SharedHeap::process_strong_roots()里，遍历对象里的引用类型字段的逻辑封装在oopDesc::oop_iterate()系的函数里；而实际拷贝对象的动作则由FastScanClosure::do_work()负责调用。</li>
+<li>基本Cheney算法的“scanned”指针，在HotSpot Serial GC里是每个space的“saved mark”。相关操作的函数名是：<code>save_marks()</code>、<code>set_saved_mark()</code>、<code>reset_saved_mark()</code>、<code>no_allocs_since_save_marks()</code>、<code>saved_mark_at_top()</code> </li>
+<li>HotSpot VM的分代式GC需要通过==写屏障（write barrier）来维护一个记忆集合（remember set）——记录从old generation到young generation的跨代引用的数据结构==。具体在代码中叫做CardTable。在minor GC时，old generation被remember set所记录下的区域会被看作根集合的一部分。而在minor GC过程中，每当有对象晋升到old generation都有可能产生新的跨代引用。<br>所以FastScanClosure::do_work()里也有调用写屏障的逻辑：OopsInGenClosure::do_barrier()。 </li>
+</ul>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/JVM/" rel="tag"># JVM</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/06/16/JVM_GC_Heap/" rel="next" title="HotSpot堆的实现">
+                <i class="fa fa-chevron-left"></i> HotSpot堆的实现
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/06/18/JVM_GC_DefNewGeneration/" rel="prev" title="HotSpot新生代DefNewGeneration的实现">
+                HotSpot新生代DefNewGeneration的实现 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">62</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">6</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">8</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#Cheney算法"><span class="nav-number">1.</span> <span class="nav-text">Cheney算法</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#使用一个队列（queue）与一个集合（set）："><span class="nav-number">1.1.</span> <span class="nav-text">使用一个队列（queue）与一个集合（set）：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#只用一个队列（对象内可以记录遍历状态）"><span class="nav-number">1.2.</span> <span class="nav-text">只用一个队列（对象内可以记录遍历状态）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Cheney算法的伪代码"><span class="nav-number">1.3.</span> <span class="nav-text">Cheney算法的伪代码</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#HotSpot-VM-Serial-GC的实现"><span class="nav-number">2.</span> <span class="nav-text">HotSpot VM Serial GC的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#与Cheney算法的异同"><span class="nav-number">2.1.</span> <span class="nav-text">与Cheney算法的异同</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#一些Serial-GC的实现要点"><span class="nav-number">2.2.</span> <span class="nav-text">一些Serial GC的实现要点</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

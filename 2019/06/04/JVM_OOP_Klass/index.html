@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="HotSpot中类与对象的表示，使用所谓的OOP-Klass 二分模型，下面了解这部分的内容。">
+<meta name="keywords" content="JVM">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HotSpot中类与对象的表示">
+<meta property="og:url" content="http://yoursite.com/2019/06/04/JVM_OOP_Klass/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="HotSpot中类与对象的表示，使用所谓的OOP-Klass 二分模型，下面了解这部分的内容。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/Oop_Klass/1.png">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/Oop_Klass/2.png">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/Oop_Klass/3.png">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/Oop_Klass/4.png">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/Oop_Klass/5.png">
+<meta property="og:updated_time" content="2019-07-04T06:37:10.602Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="HotSpot中类与对象的表示">
+<meta name="twitter:description" content="HotSpot中类与对象的表示，使用所谓的OOP-Klass 二分模型，下面了解这部分的内容。">
+<meta name="twitter:image" content="http://yoursite.com/assets/blogImg/JVM/Oop_Klass/1.png">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2019/06/04/JVM_OOP_Klass/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>HotSpot中类与对象的表示 | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/06/04/JVM_OOP_Klass/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">HotSpot中类与对象的表示
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-06-04 08:55:00" itemprop="dateCreated datePublished" datetime="2019-06-04T08:55:00+08:00">2019-06-04</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-07-04 14:37:10" itemprop="dateModified" datetime="2019-07-04T14:37:10+08:00">2019-07-04</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/JVM/" itemprop="url" rel="index"><span itemprop="name">JVM</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>HotSpot中类与对象的表示，使用所谓的<strong><em>OOP-Klass 二分模型</em></strong>，下面了解这部分的内容。</p>
+<a id="more"></a>
+<h3 id="对象表示机制"><a href="#对象表示机制" class="headerlink" title="对象表示机制"></a>对象表示机制</h3><h4 id="对象的内存布局"><a href="#对象的内存布局" class="headerlink" title="对象的内存布局"></a>对象的内存布局</h4><p>HotSpot虚拟机中，对象在内存中存储的布局可以分为三块区域：对象头（Header）、实例数据（Instance Data）和对齐填充（Padding）。</p>
+<h5 id="对象头"><a href="#对象头" class="headerlink" title="对象头"></a>对象头</h5><ul>
+<li><p>Mark Word：用于存储对象自身的运行时数据，如哈希码（HashCode）、GC 分代年龄、锁状态标志、线程持有的锁、偏向线程 ID、偏向时间戳、对象分代年龄</p>
+</li>
+<li><p>元数据指针：指向描述类型的Klass对象的指针，Klass对象包含了实例对象所属类型的元数据（meta data），因此该字段称为元数据指针。虚拟机在运行时将频繁使用这个指针定位到位于方法区内的类型信息。</p>
+</li>
+<li><p>如果对象是一个 Java 数组：那在对象头中还必须有一块用于记录数组长度的数据。因为虚拟机可以通过普通 Java 对象的元数据信息确定 Java 对象的大小，但是从数组的元数据中无法确定数组的大小。</p>
+</li>
+</ul>
+<h5 id="实例数据"><a href="#实例数据" class="headerlink" title="实例数据"></a>实例数据</h5><p>实例数据部分是对象真正存储的有效信息，也是在程序代码中所定义的各种类型的字段内容。<br>这部分的存储顺序会受到虚拟机分配策略参数（FieldsAllocationStyle）和字段在 Java 源码中定义顺序的影响。</p>
+<h5 id="对齐填充"><a href="#对齐填充" class="headerlink" title="对齐填充"></a>对齐填充</h5><p>对齐填充不是必然存在的，没有特别的含义，它仅起到占位符的作用。</p>
+<p>由于 HotSpot VM 的自动内存管理系统要求对象起始地址必须是 8 字节的整数倍，也就是说对象的大小必须是 8 字节的整数倍。对象头部分是 8 字节的倍数，所以当对象实例数据部分没有对齐时，就需要通过对齐填充来补全。</p>
+<h4 id="OOP-Klass-二分模型"><a href="#OOP-Klass-二分模型" class="headerlink" title="OOP-Klass 二分模型"></a>OOP-Klass 二分模型</h4><p>OOP-Klass 二分模型在HotSpot内部用于表示Java对象。</p>
+<ul>
+<li>OOP：ordinary object pointer，普通对象指针，用来描述对象实例信息。</li>
+<li>Klass：Java类的c++对等体，用来描述Java类。</li>
+</ul>
+<font color="red"> <strong>这样设计的原因</strong> ：</font><font color="blue"><strong><em>没必要令每一个对象都持有任何虚函数！</em></strong></font>
+
+<h5 id="模块划分"><a href="#模块划分" class="headerlink" title="模块划分"></a>模块划分</h5><p>这部分属于 vm下的 oops 模块。而oops 模块的组成如下：<br><img src="/assets/blogImg/JVM/Oop_Klass/1.png" alt></p>
+<h5 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h5><p>设计这套模型的原因在代码的注释有说明：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">// A Klass is the part of the klassOop that provides:</span><br><span class="line">//  1: language level class object (method dictionary etc.)</span><br><span class="line">//  2: provide vm dispatch behavior for the object</span><br><span class="line">// Both functions are combined into one C++ class. The toplevel class &quot;Klass&quot;</span><br><span class="line">// implements purpose 1 whereas all subclasses provide extra virtual functions</span><br><span class="line">// for purpose 2.</span><br><span class="line"></span><br><span class="line">// One reason for the oop/klass dichotomy in the implementation is</span><br><span class="line">// that we don&apos;t want a C++ vtbl pointer in every object.  Thus,</span><br><span class="line">// normal oops don&apos;t have any virtual functions.  Instead, they</span><br><span class="line">// forward all &quot;virtual&quot; functions to their klass, which does have</span><br><span class="line">// a vtbl and does the C++ dispatch depending on the object&apos;s</span><br><span class="line">// actual type.  (See oop.inline.hpp for some of the forwarding code.)</span><br><span class="line">// ALL FUNCTIONS IMPLEMENTING THIS DISPATCH ARE PREFIXED WITH &quot;oop_&quot;!</span><br></pre></td></tr></table></figure></p>
+<p>其实就是<font color="red">不想让每个对象都包含vtbl(虚方法表)，其中oop中不含有任何虚函数，虚函数表保存于klass中，可以进行method dispatch</font>。</p>
+<h3 id="相关oop和Klass-的内存布局"><a href="#相关oop和Klass-的内存布局" class="headerlink" title="相关oop和Klass 的内存布局"></a>相关oop和Klass 的内存布局</h3><h4 id="相关的-oop-结构："><a href="#相关的-oop-结构：" class="headerlink" title="相关的 oop 结构："></a>相关的 oop 结构：</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line">// oopDesc is the top baseclass for objects classes.</span><br><span class="line">class oopDesc &#123;</span><br><span class="line">    private:</span><br><span class="line">        volatile markOop  _mark;            </span><br><span class="line">        union _metadata &#123;</span><br><span class="line">        wideKlassOop    _klass;</span><br><span class="line">        narrowOop       _compressed_klass;</span><br><span class="line">    &#125; _metadata;</span><br><span class="line">    ....</span><br><span class="line">&#125;</span><br><span class="line">  </span><br><span class="line"></span><br><span class="line">// 通常使用 instanceOopDesc 来表示一个 Java对象</span><br><span class="line">class instanceOopDesc : public oopDesc &#123;</span><br><span class="line">    // 没有其他变量</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">// 是所有 array 类型的抽象基类</span><br><span class="line">// 这个类没有定义纯虚函数来保证它是抽象类，因为这样会使这个c++类的每一个实例都会分配虚函数表</span><br><span class="line"></span><br><span class="line">// The layout of array Oops is:</span><br><span class="line"></span><br><span class="line">//  markOop</span><br><span class="line">//  klassOop  // 32 bits if compressed but declared 64 in LP64.</span><br><span class="line">//  length    // shares klass memory or allocated after declared fields.</span><br><span class="line">class arrayOopDesc : public oopDesc &#123;</span><br><span class="line"></span><br><span class="line">    /**   计算 header size : length字段的 offset +  length这个字段本身的大小（一个int）  */</span><br><span class="line">    // Header size computation.</span><br><span class="line">    // The header is considered the oop part of this type plus the length.</span><br><span class="line">    // Returns the aligned header_size_in_bytes.  This is not equivalent to</span><br><span class="line">    // sizeof(arrayOopDesc) which should not appear in the code.</span><br><span class="line">    static int header_size_in_bytes() &#123;</span><br><span class="line">        size_t hs = align_size_up(length_offset_in_bytes() + sizeof(int),</span><br><span class="line">                              HeapWordSize);</span><br><span class="line"></span><br><span class="line">    public:</span><br><span class="line">    /**  计算 length字段的 offset  */</span><br><span class="line">    // The _length field is not declared in C++.  It is allocated after the</span><br><span class="line">    // declared nonstatic fields in arrayOopDesc if not compressed, otherwise</span><br><span class="line">    // it occupies the second half of the _klass field in oopDesc.</span><br><span class="line">    static int length_offset_in_bytes() &#123;</span><br><span class="line">        return UseCompressedOops ? klass_gap_offset_in_bytes() :</span><br><span class="line">                               sizeof(arrayOopDesc);</span><br><span class="line">    &#125;</span><br><span class="line">  </span><br><span class="line">      // ... 省略</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>_mark是markOop类型对象，用于存储对象自身的运行时数据，如哈希码（HashCode）、GC分代年龄、锁状态标志、线程持有的锁、偏向线程ID、偏向时间戳等等，占用内存大小与虚拟机位长一致。</li>
+<li>_metadata是一个结构体，wideKlassOop（64位）和narrowOop（32位）都用于指向描述类型的Klass对象的指针（其中narrowOop是经过压缩的指针），Klass对象包含了实例对象所属类型的元数据（meta data），因此该字段称为元数据指针。虚拟机在运行时将频繁使用这个指针定位到位于方法区内的类型信息。</li>
+<li><code>arrayOopDesc</code>的_length字段并没有定义在c++，而是根据VM参数“UseCompressedOops”而定：<ul>
+<li>如果没有开启压缩OOPS（-XX:-UseCompressedOops）,length字段分配在整个arrayOopDesc结构体之后</li>
+<li>如果开启压缩OOPS（-XX:+UseCompressedOops）,length字段分配在union<code>_metadata</code>的_klass的第二部分，因为此时存储的指针只占32位。</li>
+</ul>
+</li>
+</ul>
+<p>对象和数组的内存布局如下图：<br><img src="/assets/blogImg/JVM/Oop_Klass/2.png" alt><br><img src="/assets/blogImg/JVM/Oop_Klass/3.png" alt></p>
+<h4 id="相关的-Klass-结构："><a href="#相关的-Klass-结构：" class="headerlink" title="相关的 Klass 结构："></a>相关的 Klass 结构：</h4><h5 id="注意"><a href="#注意" class="headerlink" title="注意"></a>注意</h5><p>以<code>instanceKlass</code>为例，，由于HotSpot从 JDK 1.8 开始移除了“PerGen(永生代)”，所以 <code>instanceKlass</code> 的结构不再包含 oop。</p>
+<h5 id="Klass"><a href="#Klass" class="headerlink" title="Klass"></a>Klass</h5><p><img src="/assets/blogImg/JVM/Oop_Klass/4.png" alt></p>
+<h5 id="instanceKlass"><a href="#instanceKlass" class="headerlink" title="instanceKlass"></a>instanceKlass</h5><p><img src="/assets/blogImg/JVM/Oop_Klass/5.png" alt></p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/JVM/" rel="tag"># JVM</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/06/03/JVM_JNI_ENTRY_JNI_END/" rel="next" title="JNI_ENTRY和JNI_END宏">
+                <i class="fa fa-chevron-left"></i> JNI_ENTRY和JNI_END宏
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/06/05/JVM_Create_Instance/" rel="prev" title="HotSpot对象的创建">
+                HotSpot对象的创建 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">62</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">6</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">8</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#对象表示机制"><span class="nav-number">1.</span> <span class="nav-text">对象表示机制</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#对象的内存布局"><span class="nav-number">1.1.</span> <span class="nav-text">对象的内存布局</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#对象头"><span class="nav-number">1.1.1.</span> <span class="nav-text">对象头</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#实例数据"><span class="nav-number">1.1.2.</span> <span class="nav-text">实例数据</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#对齐填充"><span class="nav-number">1.1.3.</span> <span class="nav-text">对齐填充</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#OOP-Klass-二分模型"><span class="nav-number">1.2.</span> <span class="nav-text">OOP-Klass 二分模型</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#模块划分"><span class="nav-number">1.2.1.</span> <span class="nav-text">模块划分</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#小结"><span class="nav-number">1.2.2.</span> <span class="nav-text">小结</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#相关oop和Klass-的内存布局"><span class="nav-number">2.</span> <span class="nav-text">相关oop和Klass 的内存布局</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#相关的-oop-结构："><span class="nav-number">2.1.</span> <span class="nav-text">相关的 oop 结构：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#相关的-Klass-结构："><span class="nav-number">2.2.</span> <span class="nav-text">相关的 Klass 结构：</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#注意"><span class="nav-number">2.2.1.</span> <span class="nav-text">注意</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#Klass"><span class="nav-number">2.2.2.</span> <span class="nav-text">Klass</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#instanceKlass"><span class="nav-number">2.2.3.</span> <span class="nav-text">instanceKlass</span></a></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

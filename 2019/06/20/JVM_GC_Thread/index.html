@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="HotSpot里面并没有“GCThread”这样的对象，GC操作是由 VMThread 负责的。">
+<meta name="keywords" content="JVM">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HotSpot里面的GC线程(VMThread)">
+<meta property="og:url" content="http://yoursite.com/2019/06/20/JVM_GC_Thread/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="HotSpot里面并没有“GCThread”这样的对象，GC操作是由 VMThread 负责的。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-07-04T09:47:31.554Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="HotSpot里面的GC线程(VMThread)">
+<meta name="twitter:description" content="HotSpot里面并没有“GCThread”这样的对象，GC操作是由 VMThread 负责的。">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2019/06/20/JVM_GC_Thread/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>HotSpot里面的GC线程(VMThread) | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/06/20/JVM_GC_Thread/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">HotSpot里面的GC线程(VMThread)
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-06-20 08:55:00" itemprop="dateCreated datePublished" datetime="2019-06-20T08:55:00+08:00">2019-06-20</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-07-04 17:47:31" itemprop="dateModified" datetime="2019-07-04T17:47:31+08:00">2019-07-04</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/JVM/" itemprop="url" rel="index"><span itemprop="name">JVM</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>HotSpot里面并没有“GCThread”这样的对象，GC操作是由 <strong>VMThread</strong> 负责的。</p>
+<a id="more"></a>
+<h3 id="VMThread"><a href="#VMThread" class="headerlink" title="VMThread"></a>VMThread</h3><ul>
+<li>是一个单例对象</li>
+<li>它会产生或触发其他所有的线程</li>
+<li>它被其他线程用来做一些VM操作，例如GC</li>
+</ul>
+<h4 id="VMThread的初始化"><a href="#VMThread的初始化" class="headerlink" title="VMThread的初始化"></a>VMThread的初始化</h4><p>在JVM初始化时，会创建VMThread,具体看到<code>Threads::create_vm</code>方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">// Create the VMThread</span><br><span class="line">&#123; TraceTime timer(&quot;Start VMThread&quot;, TraceStartupTime);</span><br><span class="line">  VMThread::create();</span><br><span class="line">  Thread* vmthread = VMThread::vm_thread();</span><br><span class="line"></span><br><span class="line">  if (!os::create_thread(vmthread, os::vm_thread))</span><br><span class="line">    vm_exit_during_initialization(&quot;Cannot create VM thread. Out of system resources.&quot;);</span><br><span class="line"></span><br><span class="line">  // Wait for the VM thread to become ready, and VMThread::run to initialize</span><br><span class="line">  // Monitors can have spurious returns, must always check another state flag</span><br><span class="line">  &#123;</span><br><span class="line">    MutexLocker ml(Notify_lock);</span><br><span class="line">    os::start_thread(vmthread);</span><br><span class="line">    while (vmthread-&gt;active_handles() == NULL) &#123;</span><br><span class="line">      Notify_lock-&gt;wait();</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>通过调用<code>VMThread::create()</code>方法完成<code>VMThread</code>的创建：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">bool              VMThread::_should_terminate   = false;</span><br><span class="line">bool              VMThread::_terminated         = false;</span><br><span class="line">Monitor*          VMThread::_terminate_lock     = NULL;</span><br><span class="line">VMThread*         VMThread::_vm_thread          = NULL;</span><br><span class="line">VM_Operation*     VMThread::_cur_vm_operation   = NULL;</span><br><span class="line">VMOperationQueue* VMThread::_vm_queue           = NULL;</span><br><span class="line">PerfCounter*      VMThread::_perf_accumulated_vm_operation_time = NULL;</span><br><span class="line"></span><br><span class="line">void VMThread::create() &#123;</span><br><span class="line">  assert(vm_thread() == NULL, &quot;we can only allocate one VMThread&quot;);</span><br><span class="line">  _vm_thread = new VMThread();</span><br><span class="line"></span><br><span class="line">  // Create VM operation queue</span><br><span class="line">  _vm_queue = new VMOperationQueue();</span><br><span class="line">  guarantee(_vm_queue != NULL, &quot;just checking&quot;);</span><br><span class="line"></span><br><span class="line">  _terminate_lock = new Monitor(Mutex::safepoint, &quot;VMThread::_terminate_lock&quot;, true);</span><br><span class="line"></span><br><span class="line">  if (UsePerfData) &#123;</span><br><span class="line">    // jvmstat performance counters</span><br><span class="line">    Thread* THREAD = Thread::current();</span><br><span class="line">    _perf_accumulated_vm_operation_time =</span><br><span class="line">                 PerfDataManager::create_counter(SUN_THREADS, &quot;vmOperationTime&quot;,</span><br><span class="line">                                                 PerfData::U_Ticks, CHECK);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>上面2段代码，<code>VMThread</code>的初始化过程可以总结如下：</p>
+<ul>
+<li><code>VMThread</code>包含了如下的成员变量：<ul>
+<li>_should_terminate：与线程同步相关</li>
+<li>_terminated：表示线程状态</li>
+<li>_terminate_lock： 互斥锁</li>
+<li>_vm_thread：VMThread对象，因为是单例</li>
+<li>_cur_vm_operation：当前的vm操作</li>
+<li>_vm_queue：队列，用于保存 vm操作</li>
+</ul>
+</li>
+<li><code>VMThread::create()</code>方法创建 <em>VMThread</em> 对象、<em>VMOperationQueue</em>、<em>Monitor</em></li>
+<li>VMThread只是一个c++对象，最后还是要与系统线程对应的，通过<code>os::create_thread</code>为这个 vmThread 创建系统线程。</li>
+<li>通过<code>os::start_thread</code>启动 VMThread</li>
+<li>等待 VMThread ready（怎样是Ready？具体看到 <code>VMThread::run</code> 方法）。</li>
+</ul>
+<h4 id="VMThread的运行"><a href="#VMThread的运行" class="headerlink" title="VMThread的运行"></a>VMThread的运行</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">void VMThread::run() &#123;</span><br><span class="line"></span><br><span class="line">  this-&gt;initialize_thread_local_storage();</span><br><span class="line">  this-&gt;record_stack_base_and_size();</span><br><span class="line">  </span><br><span class="line">  // Notify_lock wait checks on active_handles() to rewait in</span><br><span class="line">  // case of spurious wakeup, it should wait on the last</span><br><span class="line">  // value set prior to the notify</span><br><span class="line">  this-&gt;set_active_handles(JNIHandleBlock::allocate_block());</span><br><span class="line"></span><br><span class="line">  &#123;</span><br><span class="line">    MutexLocker ml(Notify_lock);</span><br><span class="line">    Notify_lock-&gt;notify();</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  // Wait for VM_Operations until termination</span><br><span class="line">  this-&gt;loop();</span><br><span class="line">  </span><br><span class="line">  // ... 省略</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>VMThread主要是做了一些准备工作，通知主线程恢复执行，然后不断轮询处理 VM_Operation。</p>
+<h4 id="VMThread的轮询"><a href="#VMThread的轮询" class="headerlink" title="VMThread的轮询"></a>VMThread的轮询</h4><p>这部分涉及安全点相关的知识（先跳过）并且省略部分代码：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br></pre></td><td class="code"><pre><span class="line">void VMThread::loop() &#123;</span><br><span class="line"></span><br><span class="line">  while(true) &#123;</span><br><span class="line">    VM_Operation* safepoint_ops = NULL;</span><br><span class="line">    </span><br><span class="line">    //</span><br><span class="line">    // Wait for VM operation</span><br><span class="line">    //</span><br><span class="line">    // use no_safepoint_check to get lock without attempting to &quot;sneak&quot;</span><br><span class="line">    &#123; MutexLockerEx mu_queue(VMOperationQueue_lock,</span><br><span class="line">                             Mutex::_no_safepoint_check_flag);</span><br><span class="line">                             </span><br><span class="line">      // Look for new operation</span><br><span class="line">      assert(_cur_vm_operation == NULL, &quot;no current one should be executing&quot;);</span><br><span class="line">      _cur_vm_operation = _vm_queue-&gt;remove_next();                         </span><br><span class="line">      </span><br><span class="line">      while (!should_terminate() &amp;&amp; _cur_vm_operation == NULL) &#123;</span><br><span class="line">      </span><br><span class="line">        // wait with a timeout to guarantee safepoints at regular intervals</span><br><span class="line">        bool timedout =</span><br><span class="line">          VMOperationQueue_lock-&gt;wait(Mutex::_no_safepoint_check_flag,</span><br><span class="line">                                      GuaranteedSafepointInterval);</span><br><span class="line">        </span><br><span class="line">        </span><br><span class="line">        if (timedout &amp;&amp; (SafepointALot ||</span><br><span class="line">                         SafepointSynchronize::is_cleanup_needed())) &#123;</span><br><span class="line">          MutexUnlockerEx mul(VMOperationQueue_lock,</span><br><span class="line">                              Mutex::_no_safepoint_check_flag);</span><br><span class="line">          // Force a safepoint since we have not had one for at least</span><br><span class="line">          // &apos;GuaranteedSafepointInterval&apos; milliseconds.  This will run all</span><br><span class="line">          // the clean-up processing that needs to be done regularly at a</span><br><span class="line">          // safepoint</span><br><span class="line">          SafepointSynchronize::begin();</span><br><span class="line">          #ifdef ASSERT</span><br><span class="line">            if (GCALotAtAllSafepoints) InterfaceSupport::check_gc_alot();</span><br><span class="line">          #endif</span><br><span class="line">          SafepointSynchronize::end();</span><br><span class="line">        &#125;</span><br><span class="line">        _cur_vm_operation = _vm_queue-&gt;remove_next();</span><br><span class="line">        </span><br><span class="line">        // If we are at a safepoint we will evaluate all the operations that</span><br><span class="line">        // follow that also require a safepoint</span><br><span class="line">        if (_cur_vm_operation != NULL &amp;&amp;</span><br><span class="line">            _cur_vm_operation-&gt;evaluate_at_safepoint()) &#123;</span><br><span class="line">          safepoint_ops = _vm_queue-&gt;drain_at_safepoint_priority();</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">      </span><br><span class="line">       if (should_terminate()) break;</span><br><span class="line">    &#125;  // Release mu_queue_lock</span><br><span class="line">  </span><br><span class="line">  </span><br><span class="line">    //</span><br><span class="line">    // Execute VM operation</span><br><span class="line">    //</span><br><span class="line">    &#123;</span><br><span class="line">        </span><br><span class="line">        // ... 省略</span><br><span class="line">        </span><br><span class="line">        // If we are at a safepoint we will evaluate all the operations that</span><br><span class="line">        // follow that also require a safepoint</span><br><span class="line">        if (_cur_vm_operation-&gt;evaluate_at_safepoint()) &#123;</span><br><span class="line">        </span><br><span class="line">          _vm_queue-&gt;set_drain_list(safepoint_ops); // ensure ops can be   scanned</span><br><span class="line">          </span><br><span class="line">          SafepointSynchronize::begin();</span><br><span class="line">          evaluate_operation(_cur_vm_operation);</span><br><span class="line">          </span><br><span class="line">          // now process all queued safepoint ops, iteratively draining</span><br><span class="line">          // the queue until there are none left</span><br><span class="line">          do &#123;</span><br><span class="line">            _cur_vm_operation = safepoint_ops;</span><br><span class="line">            if (_cur_vm_operation != NULL) &#123;</span><br><span class="line">              do &#123;</span><br><span class="line">                // evaluate_operation deletes the op object so we have</span><br><span class="line">                // to grab the next op now</span><br><span class="line">                VM_Operation* next = _cur_vm_operation-&gt;next();</span><br><span class="line">                _vm_queue-&gt;set_drain_list(next);</span><br><span class="line">                evaluate_operation(_cur_vm_operation);</span><br><span class="line">                _cur_vm_operation = next;</span><br><span class="line">                if (PrintSafepointStatistics) &#123;</span><br><span class="line">                  SafepointSynchronize::inc_vmop_coalesced_count();</span><br><span class="line">                &#125;</span><br><span class="line">              &#125; while (_cur_vm_operation != NULL);</span><br><span class="line">            &#125;</span><br><span class="line">            // There is a chance that a thread enqueued a safepoint op</span><br><span class="line">            // since we released the op-queue lock and initiated the   safepoint.</span><br><span class="line">            // So we drain the queue again if there is anything there, as an</span><br><span class="line">            // optimization to try and reduce the number of safepoints.</span><br><span class="line">            // As the safepoint synchronizes us with JavaThreads we will see</span><br><span class="line">            // any enqueue made by a JavaThread, but the peek will not</span><br><span class="line">            // necessarily detect a concurrent enqueue by a GC thread, but</span><br><span class="line">            // that simply means the op will wait for the next major cycle of   the</span><br><span class="line">            // VMThread - just as it would if the GC thread lost the race for</span><br><span class="line">            // the lock.</span><br><span class="line">            if (_vm_queue-&gt;peek_at_safepoint_priority()) &#123;</span><br><span class="line">              // must hold lock while draining queue</span><br><span class="line">              MutexLockerEx mu_queue(VMOperationQueue_lock,</span><br><span class="line">                                       Mutex::_no_safepoint_check_flag);</span><br><span class="line">              safepoint_ops = _vm_queue-&gt;drain_at_safepoint_priority();</span><br><span class="line">            &#125; else &#123;</span><br><span class="line">              safepoint_ops = NULL;</span><br><span class="line">            &#125;</span><br><span class="line">          &#125; while(safepoint_ops != NULL);</span><br><span class="line">          </span><br><span class="line">          _vm_queue-&gt;set_drain_list(NULL);</span><br><span class="line">          </span><br><span class="line">          // Complete safepoint synchronization</span><br><span class="line">          SafepointSynchronize::end();</span><br><span class="line">          </span><br><span class="line">        &#125; else &#123;  // not a safepoint operation</span><br><span class="line">        </span><br><span class="line">          // ... 省略</span><br><span class="line">        </span><br><span class="line">          evaluate_operation(_cur_vm_operation);</span><br><span class="line">          </span><br><span class="line">          _cur_vm_operation = NULL;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    //</span><br><span class="line">    //  Notify (potential) waiting Java thread(s) - lock without safepoint</span><br><span class="line">    //  check so that sneaking is not possible</span><br><span class="line">    &#123; MutexLockerEx mu(VMOperationRequest_lock,</span><br><span class="line">                       Mutex::_no_safepoint_check_flag);</span><br><span class="line">      VMOperationRequest_lock-&gt;notify_all();</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    </span><br><span class="line">    //</span><br><span class="line">    // We want to make sure that we get to a safepoint regularly.</span><br><span class="line">    //</span><br><span class="line">    if (SafepointALot || SafepointSynchronize::is_cleanup_needed()) &#123;</span><br><span class="line">      long interval          =    SafepointSynchronize::last_non_safepoint_interval();</span><br><span class="line">      bool max_time_exceeded = GuaranteedSafepointInterval != 0 &amp;&amp;  (interval   &gt; GuaranteedSafepointInterval);</span><br><span class="line">      if (SafepointALot || max_time_exceeded) &#123;</span><br><span class="line">        HandleMark hm(VMThread::vm_thread());</span><br><span class="line">        SafepointSynchronize::begin();</span><br><span class="line">        SafepointSynchronize::end();</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p><code>VMThread</code>轮询的逻辑如下（不考虑需要 terminate 的情况）：</p>
+<ul>
+<li>等待 VM Operation：<ul>
+<li>获取 vm operation queue 的锁</li>
+<li>获取队列中的 vm operation<ul>
+<li>如果为空，在 while 循环里通过 <code>VMOperationQueue_lock-&gt;wait</code>等待，直到有 vm operation</li>
+<li>不为空，进入 <strong>执行 VM Operation</strong> 的流程</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>执行 VM Operation：<ul>
+<li>通过<code>VMThread::evaluate_operation</code>方法执行，具体调用链为：<br><code>evaluate_operation() ---&gt; VM_Operation::evaluate() --&gt; VM_Operation::doit()</code>。</li>
+<li>各个具体的 <code>VM_Operation</code>子类实现自己<code>doit()</code>方法的逻辑</li>
+</ul>
+</li>
+<li>通知其他Java线程</li>
+<li>安全点相关（省略）</li>
+</ul>
+<h4 id="VM-Operation的提交"><a href="#VM-Operation的提交" class="headerlink" title="VM Operation的提交"></a>VM Operation的提交</h4><p>以永久代分配内存失败，需要执行GC为例（看到<code>PermGen::mem_allocate_in_gen</code>方法）：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">VM_GenCollectForPermanentAllocation op(size, </span><br><span class="line">                                       gc_count_before,</span><br><span class="line">                                       full_gc_count_before,</span><br><span class="line">                                       next_cause);</span><br><span class="line">VMThread::execute(&amp;op);</span><br></pre></td></tr></table></figure>
+<p>看到<code>VMThread::execute</code>方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">void VMThread::execute(VM_Operation* op) &#123;</span><br><span class="line">  Thread* t = Thread::current();</span><br><span class="line">  </span><br><span class="line">  if (!t-&gt;is_VM_thread()) &#123;</span><br><span class="line">  </span><br><span class="line">    // Add VM operation to list of waiting threads. We are guaranteed not to block while holding the</span><br><span class="line">    // VMOperationQueue_lock, so we can block without a safepoint check. This allows vm operation requests</span><br><span class="line">    // to be queued up during a safepoint synchronization.</span><br><span class="line">    &#123;</span><br><span class="line">      VMOperationQueue_lock-&gt;lock_without_safepoint_check();</span><br><span class="line">      bool ok = _vm_queue-&gt;add(op);</span><br><span class="line">      op-&gt;set_timestamp(os::javaTimeMillis());</span><br><span class="line">      VMOperationQueue_lock-&gt;notify();</span><br><span class="line">      VMOperationQueue_lock-&gt;unlock();</span><br><span class="line">      // VM_Operation got skipped</span><br><span class="line">      if (!ok) &#123;</span><br><span class="line">        assert(concurrent, &quot;can only skip concurrent tasks&quot;);</span><br><span class="line">        if (op-&gt;is_cheap_allocated()) delete op;</span><br><span class="line">        return;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    </span><br><span class="line">    if (!concurrent) &#123;</span><br><span class="line">      // Wait for completion of request (non-concurrent)</span><br><span class="line">      // Note: only a JavaThread triggers the safepoint check when locking</span><br><span class="line">      MutexLocker mu(VMOperationRequest_lock);</span><br><span class="line">      while(t-&gt;vm_operation_completed_count() &lt; ticket) &#123;</span><br><span class="line">        VMOperationRequest_lock-&gt;wait(!t-&gt;is_Java_thread());</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  </span><br><span class="line">  &#125;  else &#123;</span><br><span class="line">    // invoked by VM thread; usually nested VM operation</span><br><span class="line">    // ... 省略</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>关键在于这几个步骤：</p>
+<ul>
+<li>这里的普通线程获取 VMOperationQueue 的锁</li>
+<li>将 VMOperation 添加到队列里面</li>
+<li>调用<code>notify</code>唤醒<code>VMThread</code></li>
+<li>释放锁</li>
+</ul>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/JVM/" rel="tag"># JVM</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/06/19/JVM_GC_TenuredGeneration/" rel="next" title="HotSpot老年代TenuredGeneration的实现">
+                <i class="fa fa-chevron-left"></i> HotSpot老年代TenuredGeneration的实现
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/06/21/JVM_Stack/" rel="prev" title="HotSpot栈的实现">
+                HotSpot栈的实现 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">62</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">6</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">8</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#VMThread"><span class="nav-number">1.</span> <span class="nav-text">VMThread</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#VMThread的初始化"><span class="nav-number">1.1.</span> <span class="nav-text">VMThread的初始化</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#VMThread的运行"><span class="nav-number">1.2.</span> <span class="nav-text">VMThread的运行</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#VMThread的轮询"><span class="nav-number">1.3.</span> <span class="nav-text">VMThread的轮询</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#VM-Operation的提交"><span class="nav-number">1.4.</span> <span class="nav-text">VM Operation的提交</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

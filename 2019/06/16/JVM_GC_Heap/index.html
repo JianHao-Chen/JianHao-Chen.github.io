@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="本文主要回顾Java GC方面的知识。">
+<meta name="keywords" content="JVM">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HotSpot堆的实现">
+<meta property="og:url" content="http://yoursite.com/2019/06/16/JVM_GC_Heap/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="本文主要回顾Java GC方面的知识。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/GC/Heap/1.png">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/GC/Heap/2.png">
+<meta property="og:updated_time" content="2019-07-04T09:05:12.546Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="HotSpot堆的实现">
+<meta name="twitter:description" content="本文主要回顾Java GC方面的知识。">
+<meta name="twitter:image" content="http://yoursite.com/assets/blogImg/JVM/GC/Heap/1.png">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2019/06/16/JVM_GC_Heap/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>HotSpot堆的实现 | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/06/16/JVM_GC_Heap/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">HotSpot堆的实现
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-06-16 08:55:00" itemprop="dateCreated datePublished" datetime="2019-06-16T08:55:00+08:00">2019-06-16</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-07-04 17:05:12" itemprop="dateModified" datetime="2019-07-04T17:05:12+08:00">2019-07-04</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/JVM/" itemprop="url" rel="index"><span itemprop="name">JVM</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>本文主要回顾Java GC方面的知识。</p>
+<a id="more"></a>
+<h3 id="Java堆的实现"><a href="#Java堆的实现" class="headerlink" title="Java堆的实现"></a>Java堆的实现</h3><p><img src="/assets/blogImg/JVM/GC/Heap/1.png" width="400"></p>
+<h4 id="CollectedHeap"><a href="#CollectedHeap" class="headerlink" title="CollectedHeap"></a>CollectedHeap</h4><p>CollectedHeap是一个抽象类，主要是定义Java堆必须实现的方法。以下是它的代码，省略了一些：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br></pre></td><td class="code"><pre><span class="line">class CollectedHeap : public CHeapObj &#123;</span><br><span class="line"></span><br><span class="line">  protected:</span><br><span class="line">    MemRegion _reserved;            // 表示一个内存区域，封装了start和size</span><br><span class="line">    BarrierSet* _barrier_set;</span><br><span class="line">    bool _is_gc_active;             // 当前是否STW</span><br><span class="line">    int _n_par_threads;             // 当前执行GC任务的线程数量</span><br><span class="line"></span><br><span class="line">    // 执行GC收集的次数</span><br><span class="line">    unsigned int _total_collections;    </span><br><span class="line">    unsigned int _total_full_collections;</span><br><span class="line">    </span><br><span class="line">    // Reason for current garbage collection.  Should be set to</span><br><span class="line">    // a value reflecting no collection between collections.</span><br><span class="line">    GCCause::Cause _gc_cause;</span><br><span class="line">    GCCause::Cause _gc_lastcause;</span><br><span class="line">    PerfStringVariable* _perf_gc_cause;</span><br><span class="line">    PerfStringVariable* _perf_gc_lastcause;</span><br><span class="line">    </span><br><span class="line">    </span><br><span class="line">    // Create a new tlab</span><br><span class="line">    virtual HeapWord* allocate_new_tlab(size_t size);</span><br><span class="line">    // Reinitialize tlabs before resuming mutators.</span><br><span class="line">    virtual void resize_all_tlabs();</span><br><span class="line">    </span><br><span class="line">    // Allocate from the current thread&apos;s TLAB, with broken-out slow path.</span><br><span class="line">    inline static HeapWord* allocate_from_tlab(Thread* thread, size_t size);</span><br><span class="line">    static HeapWord* allocate_from_tlab_slow(Thread* thread, size_t size);</span><br><span class="line">    </span><br><span class="line">    // Allocate an uninitialized block of the given size, or returns NULL if</span><br><span class="line">    // this is impossible.</span><br><span class="line">    inline static HeapWord* common_mem_allocate_noinit(size_t size, bool is_noref, TRAPS);</span><br><span class="line"></span><br><span class="line">    // Like allocate_init, but the block returned by a successful allocation</span><br><span class="line">    // is guaranteed initialized to zeros.</span><br><span class="line">    inline static HeapWord* common_mem_allocate_init(size_t size, bool is_noref, TRAPS);</span><br><span class="line"></span><br><span class="line">    // Same as common_mem version, except memory is allocated in the permanent area</span><br><span class="line">    // If there is no permanent area, revert to common_mem_allocate_noinit</span><br><span class="line">    inline static HeapWord* common_permanent_mem_allocate_noinit(size_t size, TRAPS);</span><br><span class="line"></span><br><span class="line">    // Same as common_mem version, except memory is allocated in the permanent area</span><br><span class="line">    // If there is no permanent area, revert to common_mem_allocate_init</span><br><span class="line">    inline static HeapWord* common_permanent_mem_allocate_init(size_t size, TRAPS);</span><br><span class="line">    </span><br><span class="line">    </span><br><span class="line">  public:</span><br><span class="line">    virtual jint initialize() = 0;</span><br><span class="line">    virtual void post_initialize() = 0;</span><br><span class="line">    </span><br><span class="line">    MemRegion reserved_region() const &#123; return _reserved; &#125;</span><br><span class="line">    address base() const &#123; return (address)reserved_region().start(); &#125;</span><br><span class="line">  </span><br><span class="line">    virtual size_t capacity() const = 0;</span><br><span class="line">    virtual size_t used() const = 0;</span><br><span class="line">  </span><br><span class="line">    virtual size_t permanent_capacity() const = 0;</span><br><span class="line">    virtual size_t permanent_used() const = 0;</span><br><span class="line">    </span><br><span class="line"></span><br><span class="line">    // Returns &quot;TRUE&quot; if &quot;p&quot; points into the reserved area of the heap.</span><br><span class="line">    bool is_in_reserved(const void* p) const &#123;</span><br><span class="line">      return _reserved.contains(p);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // Returns &quot;TRUE&quot; if &quot;p&quot; points to the head of an allocated object in the</span><br><span class="line">    // heap. Since this method can be expensive in general, we restrict its</span><br><span class="line">    // use to assertion checking only.</span><br><span class="line">    virtual bool is_in(const void* p) const = 0;</span><br><span class="line">    </span><br><span class="line">    virtual bool is_in_closed_subset(const void* p) const &#123;</span><br><span class="line">      return is_in_reserved(p);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    virtual bool is_in_permanent(const void *p) const = 0;</span><br><span class="line">    </span><br><span class="line">    virtual bool is_permanent(const void *p) const = 0;</span><br><span class="line">    </span><br><span class="line">    inline static oop obj_allocate(KlassHandle klass, int size, TRAPS);</span><br><span class="line">    inline static oop array_allocate(KlassHandle klass, int size, int length, TRAPS);</span><br><span class="line">    inline static oop large_typearray_allocate(KlassHandle klass, int size, int length, TRAPS);</span><br><span class="line">    </span><br><span class="line">    </span><br><span class="line">    inline static oop permanent_obj_allocate(KlassHandle klass, int size, TRAPS);</span><br><span class="line">    // 分配oop，但不安装klass</span><br><span class="line">    inline static oop permanent_obj_allocate_no_klass_install(KlassHandle klass,int size,TRAPS);</span><br><span class="line">    // 用于安装klass</span><br><span class="line">    inline static void post_allocation_install_obj_klass(KlassHandle klass,oop obj,int size);</span><br><span class="line">    </span><br><span class="line">    </span><br><span class="line">    virtual HeapWord* mem_allocate(size_t size,</span><br><span class="line">                                 bool is_noref,</span><br><span class="line">                                 bool is_tlab,</span><br><span class="line">                                 bool* gc_overhead_limit_was_exceeded) = 0;</span><br><span class="line">    virtual HeapWord* permanent_mem_allocate(size_t size) = 0;</span><br><span class="line">    </span><br><span class="line">    </span><br><span class="line">    virtual bool supports_tlab_allocation() const &#123;</span><br><span class="line">      return false;</span><br><span class="line">    &#125;</span><br><span class="line">    virtual size_t tlab_capacity(Thread *thr) const &#123;</span><br><span class="line">      guarantee(false, &quot;thread-local allocation buffers not supported&quot;);</span><br><span class="line">      return 0;</span><br><span class="line">    &#125;</span><br><span class="line">  </span><br><span class="line">    // Perform a collection of the heap; intended for use in implementing</span><br><span class="line">    // &quot;System.gc&quot;.  This probably implies as full a collection as the</span><br><span class="line">    // &quot;CollectedHeap&quot; supports.</span><br><span class="line">    virtual void collect(GCCause::Cause cause) = 0;</span><br><span class="line">    </span><br><span class="line">     // This interface assumes that it&apos;s being called by the</span><br><span class="line">    // vm thread. It collects the heap assuming that the</span><br><span class="line">    // heap lock is already held and that we are executing in</span><br><span class="line">    // the context of the vm thread.</span><br><span class="line">    virtual void collect_as_vm_thread(GCCause::Cause cause) = 0;</span><br><span class="line">    </span><br><span class="line">    // Returns &quot;true&quot; iff there is a stop-world GC in progress.  (I assume</span><br><span class="line">    // that it should answer &quot;false&quot; for the concurrent part of a concurrent</span><br><span class="line">    // collector -- dld).</span><br><span class="line">    bool is_gc_active() const &#123; return _is_gc_active; &#125;</span><br><span class="line">    </span><br><span class="line">    // Total number of GC collections (started)</span><br><span class="line">    unsigned int total_collections() const &#123; return _total_collections; &#125;</span><br><span class="line">    unsigned int total_full_collections() const &#123; return      _total_full_collections;&#125;</span><br><span class="line">    </span><br><span class="line">    // Iterate over all the ref-containing fields of all objects, calling</span><br><span class="line">    // &quot;cl.do_oop&quot; on each. This includes objects in permanent memory.</span><br><span class="line">    virtual void oop_iterate(OopClosure* cl) = 0;</span><br><span class="line">    </span><br><span class="line">    // Iterate over all objects, calling &quot;cl.do_object&quot; on each.</span><br><span class="line">    // This includes objects in permanent memory.</span><br><span class="line">    virtual void object_iterate(ObjectClosure* cl) = 0;</span><br><span class="line">    </span><br><span class="line">    </span><br><span class="line">    // Similar to object_iterate() except iterates only</span><br><span class="line">    // over live objects.</span><br><span class="line">    virtual void safe_object_iterate(ObjectClosure* cl) = 0;</span><br><span class="line">    </span><br><span class="line">     // Behaves the same as oop_iterate, except only traverses</span><br><span class="line">    // interior pointers contained in permanent memory. If there</span><br><span class="line">    // is no permanent memory, does nothing.</span><br><span class="line">    virtual void permanent_oop_iterate(OopClosure* cl) = 0    </span><br><span class="line">    // Behaves the same as object_iterate, except only traverses</span><br><span class="line">    // object contained in permanent memory. If there is no</span><br><span class="line">    // permanent memory, does nothing.</span><br><span class="line">    virtual void permanent_object_iterate(ObjectClosure* cl) = 0;</span><br><span class="line">    </span><br><span class="line">    // Print all GC threads (other than the VM thread)</span><br><span class="line">    // used by this heap.</span><br><span class="line">    virtual void print_gc_threads_on(outputStream* st) const = 0;</span><br><span class="line">    void print_gc_threads() &#123; print_gc_threads_on(tty); &#125;</span><br><span class="line">    // Iterator for all GC threads (other than VM thread)</span><br><span class="line">    virtual void gc_threads_do(ThreadClosure* tc) const = 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>总结上面代码，Java堆应有的主要功能有：</p>
+<ul>
+<li>获取堆类型、容量、gc_cause、gc线程数这些信息</li>
+<li>判断给定的指针是否在堆里（后面补充）</li>
+<li>oop对象分配</li>
+<li>原生内存分配</li>
+<li>内存回收</li>
+<li>对堆内对象的遍历</li>
+<li>打印堆用到的gc线程</li>
+</ul>
+<h3 id="堆初始化的过程"><a href="#堆初始化的过程" class="headerlink" title="堆初始化的过程"></a>堆初始化的过程</h3><h4 id="堆初始化的入口"><a href="#堆初始化的入口" class="headerlink" title="堆初始化的入口"></a>堆初始化的入口</h4><p>看到 <code>Universe::initialize_heap</code>方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line">jint Universe::initialize_heap() &#123;</span><br><span class="line"></span><br><span class="line">  if (UseParallelGC) &#123;</span><br><span class="line">#ifndef SERIALGC</span><br><span class="line">    Universe::_collectedHeap = new ParallelScavengeHeap();</span><br><span class="line">#else  // SERIALGC</span><br><span class="line">    fatal(&quot;UseParallelGC not supported in java kernel vm.&quot;);</span><br><span class="line">#endif // SERIALGC</span><br><span class="line"></span><br><span class="line">  &#125; else if (UseG1GC) &#123;</span><br><span class="line">#ifndef SERIALGC</span><br><span class="line">    G1CollectorPolicy* g1p = new G1CollectorPolicy_BestRegionsFirst();</span><br><span class="line">    G1CollectedHeap* g1h = new G1CollectedHeap(g1p);</span><br><span class="line">    Universe::_collectedHeap = g1h;</span><br><span class="line">#else  // SERIALGC</span><br><span class="line">    fatal(&quot;UseG1GC not supported in java kernel vm.&quot;);</span><br><span class="line">#endif // SERIALGC</span><br><span class="line">  </span><br><span class="line">  &#125; else &#123;</span><br><span class="line">  </span><br><span class="line">    GenCollectorPolicy *gc_policy;</span><br><span class="line">    </span><br><span class="line">    if (UseSerialGC) &#123;</span><br><span class="line">      gc_policy = new MarkSweepPolicy();</span><br><span class="line">      </span><br><span class="line">    &#125; else if (UseConcMarkSweepGC) &#123;</span><br><span class="line">#ifndef SERIALGC</span><br><span class="line">      if (UseAdaptiveSizePolicy) &#123;</span><br><span class="line">        gc_policy = new ASConcurrentMarkSweepPolicy();</span><br><span class="line">      &#125; else &#123;</span><br><span class="line">        gc_policy = new ConcurrentMarkSweepPolicy();</span><br><span class="line">      &#125;</span><br><span class="line">#else   // SERIALGC</span><br><span class="line">    fatal(&quot;UseConcMarkSweepGC not supported in java kernel vm.&quot;);</span><br><span class="line">#endif // SERIALGC    </span><br><span class="line">    </span><br><span class="line">    &#125; else &#123; // default old generation</span><br><span class="line">      gc_policy = new MarkSweepPolicy();</span><br><span class="line">    &#125;</span><br><span class="line">  </span><br><span class="line">    Universe::_collectedHeap = new GenCollectedHeap(gc_policy);</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  jint status = Universe::heap()-&gt;initialize();</span><br><span class="line">  if (status != JNI_OK) &#123;</span><br><span class="line">    return status;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  // ... 省略下面代码</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>上面代码的逻辑是：根据启动参数决定使用哪一种堆及收集策略。</p>
+<h4 id="HotSpot的收集策略实现"><a href="#HotSpot的收集策略实现" class="headerlink" title="HotSpot的收集策略实现"></a>HotSpot的收集策略实现</h4><p><img src="/assets/blogImg/JVM/GC/Heap/2.png" width="500"></p>
+<h4 id="MarkSweepPolicy的初始化过程"><a href="#MarkSweepPolicy的初始化过程" class="headerlink" title="MarkSweepPolicy的初始化过程"></a>MarkSweepPolicy的初始化过程</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">MarkSweepPolicy::MarkSweepPolicy() &#123;</span><br><span class="line">  initialize_all();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>调用了<code>GenCollectorPolicy::initialize_all</code>方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">virtual void initialize_all() &#123;</span><br><span class="line">    initialize_flags();</span><br><span class="line">    initialize_size_info();</span><br><span class="line">    initialize_generations();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h5 id="initialize-flags"><a href="#initialize-flags" class="headerlink" title="initialize_flags"></a>initialize_flags</h5><p>这个方法负责对新生代、老年代以及永久代的内存大小进行设置（包括对齐调整）。就是设置例如 NewSize、MaxNewSize、PermSize 这些变量的值。其中：</p>
+<ul>
+<li>设置永久代的flag是在<code>CollectorPolicy::initialize_flags</code>实现的。</li>
+<li>设置新生代的flag是在<code>GenCollectorPolicy::initialize_flags</code>实现的。</li>
+<li>设置老年代的flag是在<code>TwoGenerationCollectorPolicy::initialize_flags</code>实现的。</li>
+</ul>
+<h5 id="initialize-size-info"><a href="#initialize-size-info" class="headerlink" title="initialize_size_info"></a>initialize_size_info</h5><p>设置新生代、老年代以及永久代的容量，包括初始值、最小值和最大值。<br>和<code>initialize_flags</code>相似：</p>
+<ul>
+<li>设置永久代的size是在<code>CollectorPolicy::initialize_size_info</code>实现的。</li>
+<li>设置新生代的size是在<code>GenCollectorPolicy::initialize_size_info</code>实现的。</li>
+<li>设置老年代的size是在<code>TwoGenerationCollectorPolicy::initialize_size_info</code>实现的</li>
+</ul>
+<h5 id="initialize-generations"><a href="#initialize-generations" class="headerlink" title="initialize_generations"></a>initialize_generations</h5><ul>
+<li>HotSpot通过<code>GenerationSpec</code>、<code>PermanentGenerationSpec</code>，分别封装新生代（老年代）、永久代的细节，如名称、初始大小、最大大小等。</li>
+<li>之所以使用这2个类去封装分代的如name、size这些信息，而不使用Generation的虚函数，是因为这些信息是分代初始化必须的。</li>
+</ul>
+<h4 id="GenCollectedHeap的初始化"><a href="#GenCollectedHeap的初始化" class="headerlink" title="GenCollectedHeap的初始化"></a>GenCollectedHeap的初始化</h4><p>看到<code>GenCollectedHeap::initialize</code>方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br></pre></td><td class="code"><pre><span class="line">jint GenCollectedHeap::initialize() &#123;</span><br><span class="line">  CollectedHeap::pre_initialize();</span><br><span class="line">  </span><br><span class="line">  // 获取分代数量</span><br><span class="line">  int i;</span><br><span class="line">  _n_gens = gen_policy()-&gt;number_of_generations();</span><br><span class="line"></span><br><span class="line">  // 对齐分代的初始值、最大值</span><br><span class="line">  _gen_specs = gen_policy()-&gt;generations();</span><br><span class="line">  PermanentGenerationSpec *perm_gen_spec =</span><br><span class="line">                                collector_policy()-&gt;permanent_generation();</span><br><span class="line">  // Make sure the sizes are all aligned.</span><br><span class="line">  for (i = 0; i &lt; _n_gens; i++) &#123;</span><br><span class="line">    _gen_specs[i]-&gt;align(alignment);</span><br><span class="line">  &#125;</span><br><span class="line">  perm_gen_spec-&gt;align(alignment);</span><br><span class="line">  </span><br><span class="line">  // Allocate space for the heap.</span><br><span class="line">  char* heap_address;</span><br><span class="line">  size_t total_reserved = 0;</span><br><span class="line">  int n_covered_regions = 0;</span><br><span class="line">  ReservedSpace heap_rs(0);</span><br><span class="line">  </span><br><span class="line">  // 分配堆的地址，还没有分配内存！</span><br><span class="line">  heap_address = allocate(alignment, perm_gen_spec, &amp;total_reserved,</span><br><span class="line">                          &amp;n_covered_regions, &amp;heap_rs);</span><br><span class="line">                          </span><br><span class="line">  _reserved = MemRegion((HeapWord*)heap_rs.base(),</span><br><span class="line">                        (HeapWord*)(heap_rs.base() + heap_rs.size()));</span><br><span class="line">  </span><br><span class="line">  // It is important to do this in a way such that concurrent readers can&apos;t</span><br><span class="line">  // temporarily think somethings in the heap.  (Seen this happen in asserts.)</span><br><span class="line">  _reserved.set_word_size(0);</span><br><span class="line">  _reserved.set_start((HeapWord*)heap_rs.base());</span><br><span class="line">  size_t actual_heap_size = heap_rs.size() - perm_gen_spec-&gt;misc_data_size()</span><br><span class="line">                                           - perm_gen_spec-&gt;misc_code_size();</span><br><span class="line">  _reserved.set_end((HeapWord*)(heap_rs.base() + actual_heap_size));</span><br><span class="line"></span><br><span class="line">  _rem_set = collector_policy()-&gt;create_rem_set(_reserved, n_covered_regions);</span><br><span class="line">  set_barrier_set(rem_set()-&gt;bs());</span><br><span class="line">  </span><br><span class="line">  _gch = this;</span><br><span class="line"></span><br><span class="line">  //  各个分代，通过 GenerationSpec::init 进行创建、初始化</span><br><span class="line">  for (i = 0; i &lt; _n_gens; i++) &#123;</span><br><span class="line">    ReservedSpace this_rs = heap_rs.first_part(_gen_specs[i]-&gt;max_size(),</span><br><span class="line">                                              UseSharedSpaces, UseSharedSpaces);</span><br><span class="line">    _gens[i] = _gen_specs[i]-&gt;init(this_rs, i, rem_set());</span><br><span class="line">    heap_rs = heap_rs.last_part(_gen_specs[i]-&gt;max_size());</span><br><span class="line">  &#125;</span><br><span class="line">  _perm_gen = perm_gen_spec-&gt;init(heap_rs, PermSize, rem_set());</span><br><span class="line"></span><br><span class="line">  clear_incremental_collection_failed();</span><br><span class="line">  </span><br><span class="line">#ifndef SERIALGC</span><br><span class="line">  // If we are running CMS, create the collector responsible</span><br><span class="line">  // for collecting the CMS generations.</span><br><span class="line">  if (collector_policy()-&gt;is_concurrent_mark_sweep_policy()) &#123;</span><br><span class="line">    bool success = create_cms_collector();</span><br><span class="line">    if (!success) return JNI_ENOMEM;</span><br><span class="line">  &#125;</span><br><span class="line">#endif // SERIALGC</span><br><span class="line"></span><br><span class="line">  return JNI_OK;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>上面方法最重要的是对各个分代的创建和初始化，这是通过<code>GenerationSpec::init</code>方法完成：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br></pre></td><td class="code"><pre><span class="line">Generation* GenerationSpec::init(ReservedSpace rs, int level,</span><br><span class="line">                                 GenRemSet* remset) &#123;</span><br><span class="line">  switch (name()) &#123;</span><br><span class="line">    case Generation::DefNew:</span><br><span class="line">      return new DefNewGeneration(rs, init_size(), level);</span><br><span class="line">    </span><br><span class="line">    case Generation::MarkSweepCompact:</span><br><span class="line">      return new TenuredGeneration(rs, init_size(), level, remset);</span><br><span class="line">      </span><br><span class="line">#ifndef SERIALGC</span><br><span class="line">    case Generation::ParNew:</span><br><span class="line">      return new ParNewGeneration(rs, init_size(), level);</span><br><span class="line"></span><br><span class="line">    case Generation::ASParNew:</span><br><span class="line">      return new ASParNewGeneration(rs,</span><br><span class="line">                                    init_size(),</span><br><span class="line">                                    init_size() /* min size */,</span><br><span class="line">                                    level);</span><br><span class="line">    case Generation::ConcurrentMarkSweep: &#123;</span><br><span class="line">      assert(UseConcMarkSweepGC, &quot;UseConcMarkSweepGC should be set&quot;);</span><br><span class="line">      CardTableRS* ctrs = remset-&gt;as_CardTableRS();</span><br><span class="line">      if (ctrs == NULL) &#123;</span><br><span class="line">        vm_exit_during_initialization(&quot;Rem set incompatibility.&quot;);</span><br><span class="line">      &#125;</span><br><span class="line">      // Otherwise</span><br><span class="line">      // The constructor creates the CMSCollector if needed,</span><br><span class="line">      // else registers with an existing CMSCollector</span><br><span class="line"></span><br><span class="line">      ConcurrentMarkSweepGeneration* g = NULL;</span><br><span class="line">      g = new ConcurrentMarkSweepGeneration(rs,</span><br><span class="line">                 init_size(), level, ctrs, UseCMSAdaptiveFreeLists,</span><br><span class="line">                 (FreeBlockDictionary::DictionaryChoice)CMSDictionaryChoice);</span><br><span class="line"></span><br><span class="line">      g-&gt;initialize_performance_counters();</span><br><span class="line"></span><br><span class="line">      return g;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    case Generation::ASConcurrentMarkSweep: &#123;</span><br><span class="line">      assert(UseConcMarkSweepGC, &quot;UseConcMarkSweepGC should be set&quot;);</span><br><span class="line">      CardTableRS* ctrs = remset-&gt;as_CardTableRS();</span><br><span class="line">      if (ctrs == NULL) &#123;</span><br><span class="line">        vm_exit_during_initialization(&quot;Rem set incompatibility.&quot;);</span><br><span class="line">      &#125;</span><br><span class="line">      // Otherwise</span><br><span class="line">      // The constructor creates the CMSCollector if needed,</span><br><span class="line">      // else registers with an existing CMSCollector</span><br><span class="line"></span><br><span class="line">      ASConcurrentMarkSweepGeneration* g = NULL;</span><br><span class="line">      g = new ASConcurrentMarkSweepGeneration(rs,</span><br><span class="line">                 init_size(), level, ctrs, UseCMSAdaptiveFreeLists,</span><br><span class="line">                 (FreeBlockDictionary::DictionaryChoice)CMSDictionaryChoice);</span><br><span class="line"></span><br><span class="line">      g-&gt;initialize_performance_counters();</span><br><span class="line"></span><br><span class="line">      return g;</span><br><span class="line">    &#125;</span><br><span class="line">#endif // SERIALGC</span><br><span class="line">     default:</span><br><span class="line">      guarantee(false, &quot;unrecognized GenerationName&quot;);</span><br><span class="line">      return NULL;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/JVM/" rel="tag"># JVM</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/06/15/JVM_GC_Introduce/" rel="next" title="HotSpot内存管理基础知识">
+                <i class="fa fa-chevron-left"></i> HotSpot内存管理基础知识
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/06/17/JVM_GC_SerialGC/" rel="prev" title="Serial GC的minor GC算法">
+                Serial GC的minor GC算法 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">62</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">6</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">8</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#Java堆的实现"><span class="nav-number">1.</span> <span class="nav-text">Java堆的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#CollectedHeap"><span class="nav-number">1.1.</span> <span class="nav-text">CollectedHeap</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#堆初始化的过程"><span class="nav-number">2.</span> <span class="nav-text">堆初始化的过程</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#堆初始化的入口"><span class="nav-number">2.1.</span> <span class="nav-text">堆初始化的入口</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#HotSpot的收集策略实现"><span class="nav-number">2.2.</span> <span class="nav-text">HotSpot的收集策略实现</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#MarkSweepPolicy的初始化过程"><span class="nav-number">2.3.</span> <span class="nav-text">MarkSweepPolicy的初始化过程</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#initialize-flags"><span class="nav-number">2.3.1.</span> <span class="nav-text">initialize_flags</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#initialize-size-info"><span class="nav-number">2.3.2.</span> <span class="nav-text">initialize_size_info</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#initialize-generations"><span class="nav-number">2.3.3.</span> <span class="nav-text">initialize_generations</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#GenCollectedHeap的初始化"><span class="nav-number">2.4.</span> <span class="nav-text">GenCollectedHeap的初始化</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

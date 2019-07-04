@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="本文研究HotSpot的虚函数表。">
+<meta name="keywords" content="JVM">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HotSpot的虚函数表">
+<meta property="og:url" content="http://yoursite.com/2019/06/07/JVM_Vtable/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="本文研究HotSpot的虚函数表。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/Vtable/1.png">
+<meta property="og:updated_time" content="2019-07-04T07:27:09.221Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="HotSpot的虚函数表">
+<meta name="twitter:description" content="本文研究HotSpot的虚函数表。">
+<meta name="twitter:image" content="http://yoursite.com/assets/blogImg/JVM/Vtable/1.png">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2019/06/07/JVM_Vtable/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>HotSpot的虚函数表 | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/06/07/JVM_Vtable/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">HotSpot的虚函数表
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-06-07 08:55:00" itemprop="dateCreated datePublished" datetime="2019-06-07T08:55:00+08:00">2019-06-07</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-07-04 15:27:09" itemprop="dateModified" datetime="2019-07-04T15:27:09+08:00">2019-07-04</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/JVM/" itemprop="url" rel="index"><span itemprop="name">JVM</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>本文研究<strong>HotSpot的虚函数表</strong>。</p>
+<a id="more"></a>
+<h3 id="vtable的作用"><a href="#vtable的作用" class="headerlink" title="vtable的作用"></a>vtable的作用</h3><p><font color="orange"><strong>实现Java的多态</strong></font>。通过虚函数表来实现运行期的方法分派。</p>
+<h3 id="vtable放在哪里"><a href="#vtable放在哪里" class="headerlink" title="vtable放在哪里"></a>vtable放在哪里</h3><p>以普通的Java类为例，在JVM里面有一个对应的 <code>instanceKlass</code>，而 <strong>vtable</strong> 就紧跟在这个 <code>instanceKlass</code>结构的后面。</p>
+<p>代码如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">/** instanceKlass 获取 vtable  */</span><br><span class="line">klassVtable* instanceKlass::vtable() const &#123;</span><br><span class="line">  return new klassVtable(as_klassOop(), start_of_vtable(), vtable_length() / vtableEntry::size());</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">/**  instanceKlass 计算 vtable 的基址  */</span><br><span class="line">intptr_t* start_of_vtable() const        &#123; return ((intptr_t*)as_klassOop()) + vtable_start_offset(); &#125;</span><br><span class="line">static int vtable_start_offset()    &#123; return header_size(); &#125;</span><br><span class="line">static int header_size()            &#123; return align_object_offset(oopDesc::header_size() + sizeof(instanceKlass)/HeapWordSize); &#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">/** klassVtable 的部分代码   */</span><br><span class="line">class klassVtable : public ResourceObj &#123;</span><br><span class="line">  KlassHandle  _klass;            // my klass</span><br><span class="line">  int          _tableOffset;      // offset of start of vtable data within klass</span><br><span class="line">  int          _length;           // length of vtable (number of entries)</span><br><span class="line">  </span><br><span class="line">public:</span><br><span class="line">    klassVtable(KlassHandle h_klass, void* base, int length) : _klass(h_klass) &#123;</span><br><span class="line">        _tableOffset = (address)base - (address)h_klass(); _length = length;</span><br><span class="line">    &#125;</span><br><span class="line">  </span><br><span class="line">    // accessors</span><br><span class="line">    vtableEntry* table() const      &#123; return (vtableEntry*)(address(_klass()) + _tableOffset); &#125;</span><br></pre></td></tr></table></figure></p>
+<h4 id="疑问：为什么需要加上oop的大小"><a href="#疑问：为什么需要加上oop的大小" class="headerlink" title="疑问：为什么需要加上oop的大小?"></a><font color="red">疑问：为什么需要加上oop的大小</font>?</h4><p>计算vtable的起始偏移位置的代码（即通过 instanceKlass的大小 + oop的大小）。</p>
+<p>为什么需要加上oop的大小呢？这里困扰了很久，因为和自己用HSDB看到的不一致。</p>
+<p><font color="green">问题的根源是：</font></p>
+<blockquote>
+<p>HotSpot VM在JDK8之前的版本都是把Java对象和元数据对象以统一的方式由GC管理的。为了让GC能统一的处理这些对象，每个由GC管理的对象都继承自oopDesc，而每个oopDesc都有一个_klass字段指向描述它的Klass对象。GC在找到一个对象之后，要知道对象大小、对象里什么位置有GC需要知道的指针之类的信息，就会通过从_klass字段找到Klass对象，从Klass对象获取。更准确说Klass对象是嵌在klassOopDesc对象，以便Klass对象也同样得到GC的统一管理。</p>
+</blockquote>
+<p>所以，我看的代码（版本是JDK1.7），instanceKlass是嵌在klassOopDesc对象中的，所以需要算上oop的大小。</p>
+<p>列出一段日志：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">InstanceKlass for java/lang/String @ 0x70e6c6a0 (object size = 384)  </span><br><span class="line"> - _mark:    &#123;0&#125; :1  </span><br><span class="line"> - _klass:   &#123;4&#125; :InstanceKlassKlass @ 0x70e60168  </span><br><span class="line"> - _java_mirror:     &#123;60&#125; :Oop for java/lang/Class @ 0x70e77760  </span><br><span class="line"> - _super:   &#123;64&#125; :InstanceKlass for java/lang/Object @ 0x70e65af8 </span><br><span class="line"> ....</span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line"> InstanceKlassKlass @ 0x70e60168 (object size = 120)  </span><br><span class="line"> - _mark:    &#123;0&#125; :1  </span><br><span class="line"> - _klass:   &#123;4&#125; :KlassKlass @ 0x70e60000  </span><br><span class="line"> - _java_mirror:     &#123;60&#125; :Oop for java/lang/Class @ 0x70e76f20  </span><br><span class="line"> - _super:   &#123;64&#125; :null  </span><br><span class="line">....</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">KlassKlass @ 0x70e60000 (object size = 120)  </span><br><span class="line"> - _mark:    &#123;0&#125; :1  </span><br><span class="line"> - _klass:   &#123;4&#125; :KlassKlass @ 0x70e60000  </span><br><span class="line"> - _java_mirror:     &#123;60&#125; :Oop for java/lang/Class @ 0x70e76e00  </span><br><span class="line"> - _super:   &#123;64&#125; :null  </span><br><span class="line"> ....</span><br></pre></td></tr></table></figure></p>
+<p>回到这个小节的开始，vtable的位置如下：</p>
+<p><img src="/assets/blogImg/JVM/Vtable/1.png" width="300"></p>
+<h3 id="vtable的长度是怎么定的"><a href="#vtable的长度是怎么定的" class="headerlink" title="vtable的长度是怎么定的"></a>vtable的长度是怎么定的</h3><h4 id="步骤一"><a href="#步骤一" class="headerlink" title="步骤一"></a>步骤一</h4><p>在解析class文件时（<code>ClassFileParser::parseClassFile</code>），通过调用<code>klassVtable::compute_vtable_size_and_num_mirandas</code>方法进行计算得到。大概逻辑是：</p>
+<ul>
+<li>获取父类 vftable 的个数，并将当前类的 vftable 的个数设置为父类 vftable 的个数。</li>
+<li>循环遍历当前 Java 类的每一个方法 ，判断是否需要为此方法在 vftable上添加1个entry。</li>
+</ul>
+<h4 id="步骤二"><a href="#步骤二" class="headerlink" title="步骤二"></a>步骤二</h4><p>当解析完class文件，会在内存创建一个 instanceKlass 对象用于存放类信息，具体看<code>instanceKlassKlass::allocate_instance_klass()</code>方法。<br>这个对象是在永久代(PerGen)分配内存的，分配内存的大小是 <code>oop.size + instanceKlass.size + vtable.size + itable.size + nonstatic_oop_map_size</code>。<br>这个vtable的长度也会写入<code>instanceKlass::_vtable_len</code>字段。</p>
+<h3 id="vtable的内容是如何写入的"><a href="#vtable的内容是如何写入的" class="headerlink" title="vtable的内容是如何写入的"></a>vtable的内容是如何写入的</h3><p>在类的链接阶段（<code>instanceKlass::link_class_impl</code>），会初始化vtable(<code>klassVtable::initialize_vtable</code>)：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line">void klassVtable::initialize_vtable(bool checkconstraints, TRAPS) &#123;</span><br><span class="line">    // ... 省略</span><br><span class="line">    </span><br><span class="line">    int super_vtable_len = initialize_from_super(super);</span><br><span class="line">    if (klass()-&gt;oop_is_array()) &#123;</span><br><span class="line">        assert(super_vtable_len == _length, &quot;arrays shouldn&apos;t introduce new methods&quot;);</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        assert(_klass-&gt;oop_is_instance(), &quot;must be instanceKlass&quot;);</span><br><span class="line">    </span><br><span class="line">        objArrayHandle methods(THREAD, ik()-&gt;methods());</span><br><span class="line">        int len = methods()-&gt;length();</span><br><span class="line">        int initialized = super_vtable_len;</span><br><span class="line"></span><br><span class="line">        // update_inherited_vtable can stop for gc - ensure using handles</span><br><span class="line">        for (int i = 0; i &lt; len; i++) &#123;</span><br><span class="line">            HandleMark hm(THREAD);</span><br><span class="line">            assert(methods()-&gt;obj_at(i)-&gt;is_method(), &quot;must be a methodOop&quot;);</span><br><span class="line">            methodHandle mh(THREAD, (methodOop)methods()-&gt;obj_at(i));</span><br><span class="line"></span><br><span class="line">            bool needs_new_entry = update_inherited_vtable(ik(), mh, super_vtable_len, checkconstraints, CHECK);</span><br><span class="line"></span><br><span class="line">            if (needs_new_entry) &#123;</span><br><span class="line">                put_method_at(mh(), initialized);</span><br><span class="line">                mh()-&gt;set_vtable_index(initialized); // set primary vtable index</span><br><span class="line">                initialized++;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        // add miranda methods; it will also update the value of initialized</span><br><span class="line">        fill_in_mirandas(initialized);</span><br><span class="line"></span><br><span class="line">        // In class hierarchies where the accessibility is not increasing (i.e., going from private -&gt;</span><br><span class="line">        // package_private -&gt; publicprotected), the vtable might actually be smaller than our initial</span><br><span class="line">        // calculation.</span><br><span class="line">        assert(initialized &lt;= _length, &quot;vtable initialization failed&quot;);</span><br><span class="line">        for(;initialized &lt; _length; initialized++) &#123;</span><br><span class="line">            put_method_at(NULL, initialized);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>上面的代码逻辑如下：</p>
+<ul>
+<li>把父类的vtable拷贝到当前类</li>
+<li>更新当前类的vtable，遍历当前类的所有方法：<ul>
+<li>如果重写了父类的方法，那么更新vtable中对应的项</li>
+<li>如果没有重写父类的方法，那么在vtable新加一项</li>
+</ul>
+</li>
+</ul>
+<h4 id="拷贝父类的vtable"><a href="#拷贝父类的vtable" class="headerlink" title="拷贝父类的vtable"></a>拷贝父类的vtable</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">int klassVtable::initialize_from_super(KlassHandle super) &#123;</span><br><span class="line">    if (super.is_null()) &#123;</span><br><span class="line">        return 0;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        // copy methods from superKlass</span><br><span class="line">        // can&apos;t inherit from array class, so must be instanceKlass</span><br><span class="line">        assert(super-&gt;oop_is_instance(), &quot;must be instance klass&quot;);</span><br><span class="line">        </span><br><span class="line">        instanceKlass* sk = (instanceKlass*)super()-&gt;klass_part();</span><br><span class="line">        klassVtable* superVtable = sk-&gt;vtable();</span><br><span class="line">        assert(superVtable-&gt;length() &lt;= _length, &quot;vtable too short&quot;);</span><br><span class="line">        </span><br><span class="line">        // copy_vtable_to 相当于是 memory copy</span><br><span class="line">        superVtable-&gt;copy_vtable_to(table());</span><br><span class="line">        return superVtable-&gt;length();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="更新当前类的vtable"><a href="#更新当前类的vtable" class="headerlink" title="更新当前类的vtable"></a>更新当前类的vtable</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br></pre></td><td class="code"><pre><span class="line">// Update child&apos;s copy of super vtable for overrides</span><br><span class="line">// OR return true if a new vtable entry is required</span><br><span class="line">// Only called for instanceKlass&apos;s, i.e. not for arrays</span><br><span class="line">// If that changed, could not use _klass as handle for klass</span><br><span class="line">bool klassVtable::update_inherited_vtable(instanceKlass* klass, methodHandle target_method, int super_vtable_len,</span><br><span class="line">                  bool checkconstraints, TRAPS) &#123;</span><br><span class="line">                  </span><br><span class="line">    bool allocate_new = true;</span><br><span class="line">    assert(klass-&gt;oop_is_instance(), &quot;must be instanceKlass&quot;);</span><br><span class="line">    </span><br><span class="line">    // Initialize the method&apos;s vtable index to &quot;nonvirtual&quot;.</span><br><span class="line">    // If we allocate a vtable entry, we will update it to a non-negative number.</span><br><span class="line">    /** 先给它赋一个负值， 等到给这个方法分配一个vtable的entry时，会更新index为正值 */</span><br><span class="line">    target_method()-&gt;set_vtable_index(methodOopDesc::nonvirtual_vtable_index);</span><br><span class="line">    </span><br><span class="line">    // Static and &lt;init&gt; methods are never in</span><br><span class="line">    if (target_method()-&gt;is_static() || target_method()-&gt;name() ==  vmSymbols::object_initializer_name()) &#123;</span><br><span class="line">        return false;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    if (klass-&gt;is_final() || target_method()-&gt;is_final()) &#123;</span><br><span class="line">        // a final method never needs a new entry; final methods can be statically</span><br><span class="line">        // resolved and they have to be present in the vtable only if they override</span><br><span class="line">        // a super&apos;s method, in which case they re-use its entry</span><br><span class="line">        allocate_new = false;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // we need a new entry if there is no superclass</span><br><span class="line">    if (klass-&gt;super() == NULL) &#123;</span><br><span class="line">        return allocate_new;</span><br><span class="line">    &#125;</span><br><span class="line">  </span><br><span class="line">    // private methods always have a new entry in the vtable</span><br><span class="line">    // specification interpretation since classic has</span><br><span class="line">    // private methods not overriding</span><br><span class="line">    if (target_method()-&gt;is_private()) &#123;</span><br><span class="line">        return allocate_new;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    </span><br><span class="line">    // search through the vtable and update overridden entries</span><br><span class="line">    // Since check_signature_loaders acquires SystemDictionary_lock</span><br><span class="line">    // which can block for gc, once we are in this loop, use handles</span><br><span class="line">    // For classfiles built with &gt;= jdk7, we now look for transitive overrides</span><br><span class="line">    Symbol* name = target_method()-&gt;name();</span><br><span class="line">    Symbol* signature = target_method()-&gt;signature();</span><br><span class="line">    Handle target_loader(THREAD, _klass-&gt;class_loader());</span><br><span class="line">    Symbol*  target_classname = _klass-&gt;name();</span><br><span class="line">  </span><br><span class="line">    for(int i = 0; i &lt; super_vtable_len; i++) &#123;</span><br><span class="line">        methodOop super_method = method_at(i);</span><br><span class="line">        </span><br><span class="line">        // Check if method name matches</span><br><span class="line">        if (super_method-&gt;name() == name &amp;&amp; super_method-&gt;signature() == signature) &#123;</span><br><span class="line"></span><br><span class="line">            // get super_klass for method_holder for the found method</span><br><span class="line">            instanceKlass* super_klass =  instanceKlass::cast(super_method-&gt;method_holder());</span><br><span class="line"></span><br><span class="line">            /** 判断是否重写了父类（父父类）的方法 */</span><br><span class="line">            if (</span><br><span class="line">                (super_klass-&gt;is_override(super_method, target_loader, target_classname, THREAD)) </span><br><span class="line">                ||</span><br><span class="line">                ((klass-&gt;major_version() &gt;= VTABLE_TRANSITIVE_OVERRIDE_VERSION)  &amp;&amp; </span><br><span class="line">                ((super_klass = find_transitive_override(super_klass, target_method, i, target_loader, target_classname, THREAD)) != (instanceKlass*)NULL))</span><br><span class="line">             ) &#123;</span><br><span class="line">            </span><br><span class="line">                // overriding, so no new entry</span><br><span class="line">                allocate_new = false;</span><br><span class="line">    </span><br><span class="line">                // ... 省略</span><br><span class="line">             </span><br><span class="line">                // 将方法对应的 methodOop 设置在 vtable 的第 i 项</span><br><span class="line">                put_method_at(target_method(), i);</span><br><span class="line">                target_method()-&gt;set_vtable_index(i);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    return allocate_new;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="例子分析"><a href="#例子分析" class="headerlink" title="例子分析"></a>例子分析</h3><p>跑以下代码，断点到最后一行：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line">public class Animal &#123;</span><br><span class="line">  public void say()&#123;</span><br><span class="line">    System.out.println(&quot;Animal :: say&quot;);</span><br><span class="line">  &#125;</span><br><span class="line">  public void eat()&#123;</span><br><span class="line">    System.out.println(&quot;Animal :: eat&quot;);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">public class Cat extends Animal &#123;</span><br><span class="line">  public void say() &#123;</span><br><span class="line">    System.out.println(&quot;Cat :: say&quot;);</span><br><span class="line">  &#125;</span><br><span class="line">  public void eat() &#123;</span><br><span class="line">    System.out.println(&quot;Cat :: eat&quot;);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">public class Dog extends Animal&#123;</span><br><span class="line">  public void say() &#123;</span><br><span class="line">    System.out.println(&quot;Dog :: say&quot;);</span><br><span class="line">  &#125;</span><br><span class="line">  public void eat() &#123;</span><br><span class="line">    System.out.println(&quot;Dog :: eat&quot;);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">public class Test &#123;</span><br><span class="line"></span><br><span class="line">  public static void main(String[] args)&#123;</span><br><span class="line">    Animal animal = new Animal();</span><br><span class="line">    animal.say();</span><br><span class="line">    animal.eat();</span><br><span class="line"></span><br><span class="line">    Animal cat = new Cat();</span><br><span class="line">    cat.say();</span><br><span class="line">    cat.eat();</span><br><span class="line"></span><br><span class="line">    Animal dog = new Dog();</span><br><span class="line">    dog.say();</span><br><span class="line">    dog.eat();</span><br><span class="line"></span><br><span class="line">    System.out.println(&quot;&quot;);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>使用 HSDB 分别得到几个类的 InstanceKlass 的信息：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">Object @ 0x00000007c0000f28</span><br><span class="line">public void &lt;init&gt;() @0x000000010561a480;</span><br><span class="line">static void &lt;clinit&gt;() @0x000000010561aca8;</span><br><span class="line">protected void finalize() @0x000000010561ac10;</span><br><span class="line">public final void wait(long, int) @0x000000010561aae0;</span><br><span class="line">public final native void wait(long) @0x000000010561aa00;</span><br><span class="line">public final void wait() @0x000000010561ab78;</span><br><span class="line">public boolean equals(java.lang.Object) @0x000000010561a6e8;</span><br><span class="line">public java.lang.String toString() @0x000000010561a840;</span><br><span class="line">public native int hashCode() @0x000000010561a640;</span><br><span class="line">public final native java.lang.Class getClass() [signature ()Ljava.lang.Class&lt;*&gt;;] @0x000000010561a5a8;</span><br><span class="line">protected native java.lang.Object clone() @0x000000010561a778;</span><br><span class="line">private static native void registerNatives() @0x000000010561a508;</span><br><span class="line">public final native void notify() @0x000000010561a8c8;</span><br><span class="line">public final native void notifyAll() @0x000000010561a960;</span><br><span class="line"></span><br><span class="line">Animal @ 0x00000007c0062470</span><br><span class="line">public void &lt;init&gt;() @0x0000000105a2a210;</span><br><span class="line">public void say() @0x0000000105a2a2b8;</span><br><span class="line">public void eat() @0x0000000105a2a360;</span><br><span class="line">_vtable_len = 7</span><br><span class="line"></span><br><span class="line">Cat @ 0x00000007c0062670</span><br><span class="line">public void &lt;init&gt;() @0x0000000105a2a5e0;</span><br><span class="line">public void say() @0x0000000105a2a688;</span><br><span class="line">public void eat() @0x0000000105a2a730;</span><br><span class="line">_vtable_len = 7</span><br><span class="line"></span><br><span class="line">Dog @ 0x00000007c0062870</span><br><span class="line">public void &lt;init&gt;() @0x0000000105a2a9b0;</span><br><span class="line">public void say() @0x0000000105a2aa58;</span><br><span class="line">public void eat() @0x0000000105a2ab00;</span><br><span class="line">_vtable_len = 7</span><br></pre></td></tr></table></figure></p>
+<p>对于 Animal 的地址，查看它的vtable：</p>
+<p>vtable的地址是 Animal的InstanceKlass地址 + sizeof(InstanceKlass) ,于是得到 0x7c0062470 + 0x1B8 = 0x7C0062628。</p>
+<p>通过 在console 输入命令 <code>mem 0x7C0062628 7</code> ，得到：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">0x00000007c0062628: 0x000000010561ac10  --&gt; finalize</span><br><span class="line">0x00000007c0062630: 0x000000010561a6e8  --&gt; equals</span><br><span class="line">0x00000007c0062638: 0x000000010561a840  --&gt; toString</span><br><span class="line">0x00000007c0062640: 0x000000010561a640  --&gt; hashCode</span><br><span class="line">0x00000007c0062648: 0x000000010561a778  --&gt; clone</span><br><span class="line">0x00000007c0062650: 0x0000000105a2a2b8  --&gt; say</span><br><span class="line">0x00000007c0062658: 0x0000000105a2a360  --&gt; eat</span><br></pre></td></tr></table></figure></p>
+<p>同样方法查看 Cat 的 vtable :<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">0x00000007c0062828: 0x000000010561ac10 --&gt; finalize</span><br><span class="line">0x00000007c0062830: 0x000000010561a6e8 --&gt; equals</span><br><span class="line">0x00000007c0062838: 0x000000010561a840 --&gt; toString</span><br><span class="line">0x00000007c0062840: 0x000000010561a640 --&gt; hashCode</span><br><span class="line">0x00000007c0062848: 0x000000010561a778 --&gt; clone</span><br><span class="line">0x00000007c0062850: 0x0000000105a2a688 --&gt; say</span><br><span class="line">0x00000007c0062858: 0x0000000105a2a730 --&gt; eat</span><br></pre></td></tr></table></figure></p>
+<p>查看 Dog 的 vtable :<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">0x00000007c0062828: 0x000000010561ac10 --&gt; finalize</span><br><span class="line">0x00000007c0062830: 0x000000010561a6e8 --&gt; equals</span><br><span class="line">0x00000007c0062838: 0x000000010561a840 --&gt; toString</span><br><span class="line">0x00000007c0062840: 0x000000010561a640 --&gt; hashCode</span><br><span class="line">0x00000007c0062848: 0x000000010561a778 --&gt; clone</span><br><span class="line">0x00000007c0062a50: 0x0000000105a2aa58 --&gt; say</span><br><span class="line">0x00000007c0062a58: 0x0000000105a2ab00 --&gt; eat</span><br></pre></td></tr></table></figure></p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><ol>
+<li>vtable 分配在 instanceKlass对象实例的内存末尾 。</li>
+<li>vtable可以看作是一个数组，数组中的每一项成员元素都是一个指针，指针指向 Java 方法在 JVM 内部所对应的 method 实例对象的内存首地址 。</li>
+<li>vtable是 Java 实现面向对象的多态性的机制，如果一个 Java 方法可以被继承和重写， 则最终通过 put_method_at函数将方法地址替换,完成 Java 方法的动态绑定。</li>
+<li>Java 子类会继承父类的 vtable，Java 中所有类都继承自 java.lang.Object。如果一个 Java 类中不声明任何方法，则其 vtalbe 的长度默认为 5。</li>
+</ol>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/JVM/" rel="tag"># JVM</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/06/05/JVM_Klass_vtbl_klassVtable/" rel="next" title="Klass_vtbl和klassVtable的区别">
+                <i class="fa fa-chevron-left"></i> Klass_vtbl和klassVtable的区别
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/06/08/JVM_Class_Loading_Introduce/" rel="prev" title="HotSpot的类加载--概述">
+                HotSpot的类加载--概述 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">62</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">6</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">8</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#vtable的作用"><span class="nav-number">1.</span> <span class="nav-text">vtable的作用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#vtable放在哪里"><span class="nav-number">2.</span> <span class="nav-text">vtable放在哪里</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#疑问：为什么需要加上oop的大小"><span class="nav-number">2.1.</span> <span class="nav-text">疑问：为什么需要加上oop的大小?</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#vtable的长度是怎么定的"><span class="nav-number">3.</span> <span class="nav-text">vtable的长度是怎么定的</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#步骤一"><span class="nav-number">3.1.</span> <span class="nav-text">步骤一</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#步骤二"><span class="nav-number">3.2.</span> <span class="nav-text">步骤二</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#vtable的内容是如何写入的"><span class="nav-number">4.</span> <span class="nav-text">vtable的内容是如何写入的</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#拷贝父类的vtable"><span class="nav-number">4.1.</span> <span class="nav-text">拷贝父类的vtable</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#更新当前类的vtable"><span class="nav-number">4.2.</span> <span class="nav-text">更新当前类的vtable</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#例子分析"><span class="nav-number">5.</span> <span class="nav-text">例子分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#总结"><span class="nav-number">6.</span> <span class="nav-text">总结</span></a></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

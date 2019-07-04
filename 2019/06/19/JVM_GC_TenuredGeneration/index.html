@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="本文研究HotSpot老年代TenuredGeneration的实现。">
+<meta name="keywords" content="JVM">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HotSpot老年代TenuredGeneration的实现">
+<meta property="og:url" content="http://yoursite.com/2019/06/19/JVM_GC_TenuredGeneration/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="本文研究HotSpot老年代TenuredGeneration的实现。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-07-04T09:43:30.222Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="HotSpot老年代TenuredGeneration的实现">
+<meta name="twitter:description" content="本文研究HotSpot老年代TenuredGeneration的实现。">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2019/06/19/JVM_GC_TenuredGeneration/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>HotSpot老年代TenuredGeneration的实现 | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/06/19/JVM_GC_TenuredGeneration/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">HotSpot老年代TenuredGeneration的实现
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-06-19 08:55:00" itemprop="dateCreated datePublished" datetime="2019-06-19T08:55:00+08:00">2019-06-19</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-07-04 17:43:30" itemprop="dateModified" datetime="2019-07-04T17:43:30+08:00">2019-07-04</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/JVM/" itemprop="url" rel="index"><span itemprop="name">JVM</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>本文研究HotSpot老年代TenuredGeneration的实现。</p>
+<a id="more"></a>
+<h2 id="TenuredGeneration的GC实现"><a href="#TenuredGeneration的GC实现" class="headerlink" title="TenuredGeneration的GC实现"></a>TenuredGeneration的GC实现</h2><p>老年代TenuredGeneration所使用的垃圾回收算法是<strong>标记-压缩-清理</strong>算法。</p>
+<p>GC的入口：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">void TenuredGeneration::collect(bool   full,</span><br><span class="line">                                bool   clear_all_soft_refs,</span><br><span class="line">                                size_t size,</span><br><span class="line">                                bool   is_tlab) &#123;</span><br><span class="line">  retire_alloc_buffers_before_full_gc();</span><br><span class="line">  OneContigSpaceCardGeneration::collect(full, clear_all_soft_refs,</span><br><span class="line">                                        size, is_tlab);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>实际收集工作在父类的collect方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">void OneContigSpaceCardGeneration::collect(bool   full,</span><br><span class="line">                                           bool   clear_all_soft_refs,</span><br><span class="line">                                           size_t size,</span><br><span class="line">                                           bool   is_tlab) &#123;</span><br><span class="line">  SpecializationStats::clear();</span><br><span class="line">  // Temporarily expand the span of our ref processor, so</span><br><span class="line">  // refs discovery is over the entire heap, not just this generation</span><br><span class="line">  ReferenceProcessorSpanMutator</span><br><span class="line">    x(ref_processor(), GenCollectedHeap::heap()-&gt;reserved_region());</span><br><span class="line">  GenMarkSweep::invoke_at_safepoint(_level, ref_processor(), clear_all_soft_refs);</span><br><span class="line">  SpecializationStats::print();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>重点关注到<code>GenMarkSweep::invoke_at_safepoint</code>方法的实现。</p>
+<h3 id="准备工作"><a href="#准备工作" class="headerlink" title="准备工作"></a>准备工作</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">// 设置引用处理器和引用的处理策略；</span><br><span class="line">_ref_processor = rp;</span><br><span class="line">rp-&gt;setup_policy(clear_all_softrefs);</span><br><span class="line"></span><br><span class="line">// 设置输出日志；</span><br><span class="line">TraceTime t1(&quot;Full GC&quot;, PrintGC &amp;&amp; !PrintGCDetails, true, gclog_or_tty);</span><br><span class="line"></span><br><span class="line">// When collecting the permanent generation methodOops may be moving,</span><br><span class="line">// so we either have to flush all bcp data or convert it into bci.</span><br><span class="line">CodeCache::gc_prologue();</span><br><span class="line">Threads::gc_prologue();</span><br><span class="line"></span><br><span class="line">// 增加永久代回收的统计次数</span><br><span class="line">// Increment the invocation count for the permanent generation, since it is</span><br><span class="line">// implicitly collected whenever we do a full mark sweep collection.</span><br><span class="line">gch-&gt;perm_gen()-&gt;stat_record()-&gt;invocations++;</span><br><span class="line"></span><br><span class="line">// 统计GC前的内存堆已使用大小</span><br><span class="line">// Capture heap size before collection for printing.</span><br><span class="line">size_t gch_prev_used = gch-&gt;used();</span><br><span class="line"></span><br><span class="line">// 保存当前内存代和更低的内存代、以及永久代的已使用区域</span><br><span class="line">// Capture used regions for each generation that will be</span><br><span class="line">// subject to collection, so that card table adjustments can</span><br><span class="line">// be made intelligently (see clear / invalidate further below).</span><br><span class="line">gch-&gt;save_used_regions(level, true /* perm */);</span><br><span class="line"></span><br><span class="line">// 初始化遍历栈，用来保存对象和对象头的对应关系</span><br><span class="line">allocate_stacks();</span><br></pre></td></tr></table></figure>
+<h3 id="执行GC"><a href="#执行GC" class="headerlink" title="执行GC"></a>执行GC</h3><p>整个过程一共4阶段，分别对应4个方法的实现：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">// Mark live objects</span><br><span class="line">static void mark_sweep_phase1(int level, bool clear_all_softrefs);</span><br><span class="line">// Calculate new addresses</span><br><span class="line">static void mark_sweep_phase2();</span><br><span class="line">// Update pointers</span><br><span class="line">static void mark_sweep_phase3(int level);</span><br><span class="line">// Move objects to new positions</span><br><span class="line">static void mark_sweep_phase4();</span><br></pre></td></tr></table></figure></p>
+<h4 id="mark-sweep-phase1-–-递归标记GC-Root存活对象"><a href="#mark-sweep-phase1-–-递归标记GC-Root存活对象" class="headerlink" title="mark_sweep_phase1 – 递归标记GC Root存活对象"></a>mark_sweep_phase1 – 递归标记GC Root存活对象</h4><h5 id="标记根集对象"><a href="#标记根集对象" class="headerlink" title="标记根集对象"></a>标记根集对象</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">GenCollectedHeap* gch = GenCollectedHeap::heap();</span><br><span class="line">follow_root_closure.set_orig_generation(gch-&gt;get_gen(level));</span><br><span class="line">gch-&gt;gen_process_strong_roots(level,</span><br><span class="line">                                false, // Younger gens are not roots.</span><br><span class="line">                                true,  // activate StrongRootsScope</span><br><span class="line">                                true,  // Collecting permanent generation.</span><br><span class="line">                                SharedHeap::SO_SystemClasses,</span><br><span class="line">                                &amp;follow_root_closure,</span><br><span class="line">                                true,   // walk code active on stacks</span><br><span class="line">                                &amp;follow_root_closure);</span><br></pre></td></tr></table></figure>
+<ul>
+<li><code>GenCollectedHeap::gen_process_strong_roots</code>这个方法在讲新生代回收时讲过，就是遍历根集对象。</li>
+<li>对每一个遍历的对象，通过<code>MarkSweep::FollowRootClosure</code>处理。</li>
+</ul>
+<p>看到<code>FollowRootClosure::follow_root</code>的实现：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">template &lt;class T&gt; inline void MarkSweep::follow_root(T* p) &#123;</span><br><span class="line">  // ...省略</span><br><span class="line">  </span><br><span class="line">  T heap_oop = oopDesc::load_heap_oop(p);</span><br><span class="line">  if (!oopDesc::is_null(heap_oop)) &#123;</span><br><span class="line">    oop obj = oopDesc::decode_heap_oop_not_null(heap_oop);</span><br><span class="line">    if (!obj-&gt;mark()-&gt;is_marked()) &#123;</span><br><span class="line">      mark_object(obj);</span><br><span class="line">      obj-&gt;follow_contents();</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  follow_stack();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<ul>
+<li>如果对象没有被标记<ul>
+<li>调用<code>mark_object</code>标记对象。如果需要，保存对象头（根据是否使用偏向锁、是否上锁等）。</li>
+<li>调用<code>follow_contents</code>方法（具体看到<code>instanceKlass::oop_follow_contents</code>方法），遍历这个oop和它所引用的所有对象，将它们标记并压栈<code>_marking_stack</code>。</li>
+</ul>
+</li>
+<li>调用<code>follow_stack</code>方法，出栈<code>_marking_stack</code>里面的对象，调用<code>follow_contents</code>方法。</li>
+</ul>
+<p>到此，所有的根集对象都被标记了。</p>
+<h5 id="处理在标记过程中发现的引用"><a href="#处理在标记过程中发现的引用" class="headerlink" title="处理在标记过程中发现的引用"></a>处理在标记过程中发现的引用</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ref_processor()-&gt;setup_policy(clear_all_softrefs);</span><br><span class="line">ref_processor()-&gt;process_discovered_references(</span><br><span class="line">    &amp;is_alive, &amp;keep_alive, &amp;follow_stack_closure, NULL);</span><br></pre></td></tr></table></figure>
+<h5 id="卸载不再使用的类，并清理CodeCache和标记栈"><a href="#卸载不再使用的类，并清理CodeCache和标记栈" class="headerlink" title="卸载不再使用的类，并清理CodeCache和标记栈"></a>卸载不再使用的类，并清理CodeCache和标记栈</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">// Follow system dictionary roots and unload classes</span><br><span class="line">bool purged_class = SystemDictionary::do_unloading(&amp;is_alive);</span><br><span class="line"></span><br><span class="line">// Follow code cache roots</span><br><span class="line">CodeCache::do_unloading(&amp;is_alive, &amp;keep_alive, purged_class);</span><br><span class="line">follow_stack(); // Flush marking stack</span><br></pre></td></tr></table></figure>
+<h5 id="更新存活类的子类、兄弟类、实现类的引用关系，清理未被标记的软引用和弱引用"><a href="#更新存活类的子类、兄弟类、实现类的引用关系，清理未被标记的软引用和弱引用" class="headerlink" title="更新存活类的子类、兄弟类、实现类的引用关系，清理未被标记的软引用和弱引用"></a>更新存活类的子类、兄弟类、实现类的引用关系，清理未被标记的软引用和弱引用</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">follow_weak_klass_links();</span><br><span class="line"></span><br><span class="line">follow_mdo_weak_refs();</span><br></pre></td></tr></table></figure>
+<h5 id="清理字符串常量池中没有被标记过的对象"><a href="#清理字符串常量池中没有被标记过的对象" class="headerlink" title="清理字符串常量池中没有被标记过的对象"></a>清理字符串常量池中没有被标记过的对象</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">StringTable::unlink(&amp;is_alive);</span><br></pre></td></tr></table></figure>
+<h5 id="清理符号表中没有被引用的符号"><a href="#清理符号表中没有被引用的符号" class="headerlink" title="清理符号表中没有被引用的符号"></a>清理符号表中没有被引用的符号</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SymbolTable::unlink();</span><br></pre></td></tr></table></figure>
+<h4 id="mark-sweep-phase2-–-计算活跃对象在压缩完成之后的新地址"><a href="#mark-sweep-phase2-–-计算活跃对象在压缩完成之后的新地址" class="headerlink" title="mark_sweep_phase2 – 计算活跃对象在压缩完成之后的新地址"></a>mark_sweep_phase2 – 计算活跃对象在压缩完成之后的新地址</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">void GenMarkSweep::mark_sweep_phase2() &#123;</span><br><span class="line">  GenCollectedHeap* gch = GenCollectedHeap::heap();</span><br><span class="line">  Generation* pg = gch-&gt;perm_gen();</span><br><span class="line">  // ... 省略</span><br><span class="line">  </span><br><span class="line">  gch-&gt;prepare_for_compaction();</span><br><span class="line"></span><br><span class="line">  CompactPoint perm_cp(pg, NULL, NULL);</span><br><span class="line">  pg-&gt;prepare_for_compaction(&amp;perm_cp);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>先看到<code>GenCollectedHeap::prepare_for_compaction</code>方法，这是对整个堆做压缩的准备工作：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">void GenCollectedHeap::prepare_for_compaction() &#123;</span><br><span class="line">  Generation* scanning_gen = _gens[_n_gens-1];</span><br><span class="line">  // Start by compacting into same gen.</span><br><span class="line">  CompactPoint cp(scanning_gen, NULL, NULL);</span><br><span class="line">  while (scanning_gen != NULL) &#123;</span><br><span class="line">    scanning_gen-&gt;prepare_for_compaction(&amp;cp);</span><br><span class="line">    scanning_gen = prev_gen(scanning_gen);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>可以看到，分别调用它各个分代的<code>prepare_for_compaction</code>方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">void Generation::prepare_for_compaction(CompactPoint* cp) &#123;</span><br><span class="line">  // Generic implementation, can be specialized</span><br><span class="line">  CompactibleSpace* space = first_compaction_space();</span><br><span class="line">  while (space != NULL) &#123;</span><br><span class="line">    space-&gt;prepare_for_compaction(cp);</span><br><span class="line">    space = space-&gt;next_compaction_space();</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>相似的，调用各个Space的<code>prepare_for_compaction</code>方法。由于TenuredGeneration只有一个<code>TenuredSpace</code>，找到这个方法的实现：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">void ContiguousSpace::prepare_for_compaction(CompactPoint* cp) &#123;</span><br><span class="line">  SCAN_AND_FORWARD(cp, top, block_is_always_obj, obj_size);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>这个宏<code>SCAN_AND_FORWARD</code>做的是：==为活跃对象计算新地址并保存在对象头==。</p>
+<h4 id="mark-sweep-phase3-–-更新对象的引用地址"><a href="#mark-sweep-phase3-–-更新对象的引用地址" class="headerlink" title="mark_sweep_phase3 – 更新对象的引用地址"></a>mark_sweep_phase3 – 更新对象的引用地址</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">adjust_root_pointer_closure.set_orig_generation(gch-&gt;get_gen(level));</span><br><span class="line">adjust_pointer_closure.set_orig_generation(gch-&gt;get_gen(level));</span><br><span class="line"></span><br><span class="line">gch-&gt;gen_process_strong_roots(level,</span><br><span class="line">                              false, // Younger gens are not roots.</span><br><span class="line">                              true,  // activate StrongRootsScope</span><br><span class="line">                              true,  // Collecting permanent generation.</span><br><span class="line">                              SharedHeap::SO_AllClasses,</span><br><span class="line">                              &amp;adjust_root_pointer_closure,</span><br><span class="line">                              false, // do not walk code</span><br><span class="line">                              &amp;adjust_root_pointer_closure);</span><br></pre></td></tr></table></figure>
+<p>adjust_root_pointer_closure和adjust_pointer_closure都是静态创建的对象引用地址调整函数的封装对象，这里将调用gen_process_strong_roots()并使用这两个处理函数调整根集对象指针的引用地址。</p>
+<p><code>AdjustPointerClosure</code>的工作函数：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">void MarkSweep::AdjustPointerClosure::do_oop(oop* p)       &#123; adjust_pointer(p, _is_root); &#125;</span><br><span class="line">void MarkSweep::AdjustPointerClosure::do_oop(narrowOop* p) &#123; adjust_pointer(p, _is_root); &#125;</span><br></pre></td></tr></table></figure></p>
+<p>继续看<code>MarkSweep::adjust_pointer</code>方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">template &lt;class T&gt; inline void MarkSweep::adjust_pointer(T* p, bool isroot) &#123;</span><br><span class="line">  T heap_oop = oopDesc::load_heap_oop(p);</span><br><span class="line">  if (!oopDesc::is_null(heap_oop)) &#123;</span><br><span class="line">    oop obj     = oopDesc::decode_heap_oop_not_null(heap_oop);</span><br><span class="line">    oop new_obj = oop(obj-&gt;mark()-&gt;decode_pointer());</span><br><span class="line">    </span><br><span class="line">    // ... assert</span><br><span class="line">    </span><br><span class="line">    if (new_obj != NULL) &#123;</span><br><span class="line">      assert(Universe::heap()-&gt;is_in_reserved(new_obj),</span><br><span class="line">             &quot;should be in object space&quot;);</span><br><span class="line">      oopDesc::encode_store_heap_oop_not_null(p, new_obj);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>这个方法的逻辑是：解析引用对象的MarkWord，若该引用对象已经被标记，就会解析转发指针，并设置引用地址为引用对象新的地址。</p>
+<h4 id="mark-sweep-phase4-–-移动所有活跃对象到新地址"><a href="#mark-sweep-phase4-–-移动所有活跃对象到新地址" class="headerlink" title="mark_sweep_phase4 – 移动所有活跃对象到新地址"></a>mark_sweep_phase4 – 移动所有活跃对象到新地址</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">void GenMarkSweep::mark_sweep_phase4() &#123;</span><br><span class="line"></span><br><span class="line">  GenCollectedHeap* gch = GenCollectedHeap::heap();</span><br><span class="line">  Generation* pg = gch-&gt;perm_gen();</span><br><span class="line">  </span><br><span class="line">  pg-&gt;compact();</span><br><span class="line">  </span><br><span class="line">  GenCompactClosure blk;</span><br><span class="line">  gch-&gt;generation_iterate(&amp;blk, true);</span><br><span class="line">  </span><br><span class="line">  pg-&gt;post_compact(); // Shared spaces verification.</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>看到<code>compact</code>方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">void CompactibleSpace::compact() &#123;</span><br><span class="line">  SCAN_AND_COMPACT(obj_size);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>调用的是宏<code>SCAN_AND_COMPACT</code>，将对象复制到新地址。</p>
+<h4 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h4><p><strong>TenuredGeneration</strong>执行GC分为4步：</p>
+<ul>
+<li>递归标记GC Root存活对象</li>
+<li>计算活跃对象在压缩完成之后的新地址</li>
+<li>更新对象的引用地址</li>
+<li>移动所有活跃对象到新地址</li>
+</ul>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/JVM/" rel="tag"># JVM</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/06/18/JVM_GC_DefNewGeneration/" rel="next" title="HotSpot新生代DefNewGeneration的实现">
+                <i class="fa fa-chevron-left"></i> HotSpot新生代DefNewGeneration的实现
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/06/20/JVM_GC_Thread/" rel="prev" title="HotSpot里面的GC线程(VMThread)">
+                HotSpot里面的GC线程(VMThread) <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">62</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">6</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">8</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#TenuredGeneration的GC实现"><span class="nav-number">1.</span> <span class="nav-text">TenuredGeneration的GC实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#准备工作"><span class="nav-number">1.1.</span> <span class="nav-text">准备工作</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#执行GC"><span class="nav-number">1.2.</span> <span class="nav-text">执行GC</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#mark-sweep-phase1-–-递归标记GC-Root存活对象"><span class="nav-number">1.2.1.</span> <span class="nav-text">mark_sweep_phase1 – 递归标记GC Root存活对象</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#标记根集对象"><span class="nav-number">1.2.1.1.</span> <span class="nav-text">标记根集对象</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#处理在标记过程中发现的引用"><span class="nav-number">1.2.1.2.</span> <span class="nav-text">处理在标记过程中发现的引用</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#卸载不再使用的类，并清理CodeCache和标记栈"><span class="nav-number">1.2.1.3.</span> <span class="nav-text">卸载不再使用的类，并清理CodeCache和标记栈</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#更新存活类的子类、兄弟类、实现类的引用关系，清理未被标记的软引用和弱引用"><span class="nav-number">1.2.1.4.</span> <span class="nav-text">更新存活类的子类、兄弟类、实现类的引用关系，清理未被标记的软引用和弱引用</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#清理字符串常量池中没有被标记过的对象"><span class="nav-number">1.2.1.5.</span> <span class="nav-text">清理字符串常量池中没有被标记过的对象</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#清理符号表中没有被引用的符号"><span class="nav-number">1.2.1.6.</span> <span class="nav-text">清理符号表中没有被引用的符号</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#mark-sweep-phase2-–-计算活跃对象在压缩完成之后的新地址"><span class="nav-number">1.2.2.</span> <span class="nav-text">mark_sweep_phase2 – 计算活跃对象在压缩完成之后的新地址</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#mark-sweep-phase3-–-更新对象的引用地址"><span class="nav-number">1.2.3.</span> <span class="nav-text">mark_sweep_phase3 – 更新对象的引用地址</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#mark-sweep-phase4-–-移动所有活跃对象到新地址"><span class="nav-number">1.2.4.</span> <span class="nav-text">mark_sweep_phase4 – 移动所有活跃对象到新地址</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#小结"><span class="nav-number">1.2.5.</span> <span class="nav-text">小结</span></a></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

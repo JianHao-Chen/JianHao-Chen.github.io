@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="在学习HotSpot的类加载部分源码的过程中，写下以下几篇文章：  HotSpot的类加载–概述 HotSpot的类加载–Loading（本文） HotSpot的类加载–Linking HotSpot的类加载–Initialization">
+<meta name="keywords" content="JVM">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HotSpot的类加载--Loading">
+<meta property="og:url" content="http://yoursite.com/2019/06/09/JVM_Class_Loading_Loading/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="在学习HotSpot的类加载部分源码的过程中，写下以下几篇文章：  HotSpot的类加载–概述 HotSpot的类加载–Loading（本文） HotSpot的类加载–Linking HotSpot的类加载–Initialization">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/Class_Loading/Loading/1.png">
+<meta property="og:updated_time" content="2019-07-04T08:17:20.148Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="HotSpot的类加载--Loading">
+<meta name="twitter:description" content="在学习HotSpot的类加载部分源码的过程中，写下以下几篇文章：  HotSpot的类加载–概述 HotSpot的类加载–Loading（本文） HotSpot的类加载–Linking HotSpot的类加载–Initialization">
+<meta name="twitter:image" content="http://yoursite.com/assets/blogImg/JVM/Class_Loading/Loading/1.png">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2019/06/09/JVM_Class_Loading_Loading/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>HotSpot的类加载--Loading | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/06/09/JVM_Class_Loading_Loading/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">HotSpot的类加载--Loading
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-06-09 08:55:00" itemprop="dateCreated datePublished" datetime="2019-06-09T08:55:00+08:00">2019-06-09</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-07-04 16:17:20" itemprop="dateModified" datetime="2019-07-04T16:17:20+08:00">2019-07-04</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/JVM/" itemprop="url" rel="index"><span itemprop="name">JVM</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>在学习HotSpot的类加载部分源码的过程中，写下以下几篇文章：</p>
+<ul>
+<li>HotSpot的类加载–概述</li>
+<li>HotSpot的类加载–Loading（本文）</li>
+<li>HotSpot的类加载–Linking</li>
+<li>HotSpot的类加载–Initialization</li>
+</ul>
+<a id="more"></a>
+<h3 id="加载-Loading"><a href="#加载-Loading" class="headerlink" title="加载 (Loading)"></a>加载 (Loading)</h3><h4 id="定义"><a href="#定义" class="headerlink" title="定义"></a>定义</h4><p>加载是类加载过程中的一个阶段，这个阶段会在内存中生成一个代表这个类的java.lang.Class对象，作为方法区这个类的各种数据的入口。</p>
+<h4 id="Classfile模块"><a href="#Classfile模块" class="headerlink" title="Classfile模块"></a>Classfile模块</h4><p>HotSpot的加载功能是由Classfile模块提供的。它包含以下模块：</p>
+<ul>
+<li>ClassFileParser： 类解析器，用来解析 *.class文件</li>
+<li>Verifier：验证器，用来验证*.class文件中的字节码。它将为每一个类创建一个ClassVerifier实例来验证。</li>
+<li>CLassLoader：类加载器。</li>
+<li>SystemDictionary：系统字典，用来记录已加载的所有类。</li>
+<li>SymboleTable：字符表，用作快速查询字符串，例如将与JDK基本类的名字相映射的字符串、表示函数签名类型的字符串以及VM内部各种用途的字符串等。</li>
+</ul>
+<h4 id="加载类的主要过程"><a href="#加载类的主要过程" class="headerlink" title="加载类的主要过程"></a>加载类的主要过程</h4><p>这个过程在方法<code>SystemDictionary::resolve_from_stream</code>中：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">// Add a klass to the system from a stream (called by jni_DefineClass and</span><br><span class="line">// JVM_DefineClass).</span><br><span class="line">// Note: class_name can be NULL. In that case we do not know the name of</span><br><span class="line">// the class until we have parsed the stream.</span><br><span class="line"></span><br><span class="line">klassOop SystemDictionary::resolve_from_stream(Symbol* class_name,</span><br><span class="line">                                               Handle class_loader,</span><br><span class="line">                                               Handle protection_domain,</span><br><span class="line">                                               ClassFileStream* st,</span><br><span class="line">                                               bool verify,</span><br><span class="line">                                               TRAPS) &#123;</span><br><span class="line"></span><br><span class="line">  //【1. 加锁】</span><br><span class="line">  // Make sure we are synchronized on the class loader before we proceed</span><br><span class="line">  Handle lockObject = compute_loader_lock_object(class_loader, THREAD);</span><br><span class="line">  check_loader_lock_contention(lockObject, THREAD);</span><br><span class="line">  ObjectLocker ol(lockObject, THREAD, DoObjectLock);</span><br><span class="line">    </span><br><span class="line">  // 【2. 对Class文件的数据流进行解析，生成instanceKlassHandle对象】</span><br><span class="line">  instanceKlassHandle k = ClassFileParser(st).parseClassFile(class_name,</span><br><span class="line">                                                             class_loader,</span><br><span class="line">                                                             protection_domain,</span><br><span class="line">                                                             parsed_name,</span><br><span class="line">                                                             verify,</span><br><span class="line">                                                             THREAD);</span><br><span class="line">                                                             </span><br><span class="line">  // 【3.进行一些检查，如不能在‘java’包下，类名不能包含‘.’】</span><br><span class="line">  //  这里的代码省略</span><br><span class="line">  </span><br><span class="line">  </span><br><span class="line">  return k();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>上面代码主要是通过调用<code>ClassFileParser</code>模块完成其中最重要的类文件解析工作的。而<code>ClassFileParser</code>又是通过<code>ClassFileStream</code>读取Class文件字节流的。</p>
+<p><code>parseClassFile</code>方法如下，省略部分代码：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br></pre></td><td class="code"><pre><span class="line">instanceKlassHandle ClassFileParser::parseClassFile(Symbol* name,</span><br><span class="line">                                                    Handle class_loader,</span><br><span class="line">                                                    Handle protection_domain,</span><br><span class="line">                                                    KlassHandle host_klass,</span><br><span class="line">                                                    GrowableArray&lt;Handle&gt;* cp_patches,</span><br><span class="line">                                                    TempNewSymbol&amp; parsed_name,</span><br><span class="line">                                                    bool verify,</span><br><span class="line">                                                    TRAPS) &#123;</span><br><span class="line"></span><br><span class="line">    // 获取流对象</span><br><span class="line">    ClassFileStream* cfs = stream();</span><br><span class="line">    </span><br><span class="line">    // 【1】 Magic value</span><br><span class="line">    u4 magic = cfs-&gt;get_u4_fast();</span><br><span class="line">    guarantee_property(magic == JAVA_CLASSFILE_MAGIC,</span><br><span class="line">                     &quot;Incompatible magic value %u in class file %s&quot;,</span><br><span class="line">                     magic, CHECK_(nullHandle));</span><br><span class="line">    </span><br><span class="line">    // 【2】 Version numbers</span><br><span class="line">    u2 minor_version = cfs-&gt;get_u2_fast();</span><br><span class="line">    u2 major_version = cfs-&gt;get_u2_fast();</span><br><span class="line">    if (!is_supported_version(major_version, minor_version)) &#123;</span><br><span class="line">        // throw exception</span><br><span class="line">    &#125;</span><br><span class="line">    _major_version = major_version;</span><br><span class="line">    _minor_version = minor_version;</span><br><span class="line">    </span><br><span class="line">    // 【3】Constant pool</span><br><span class="line">    constantPoolHandle cp = parse_constant_pool(CHECK_(nullHandle));</span><br><span class="line">    ConstantPoolCleaner error_handler(cp); // set constant pool to be cleaned up.</span><br><span class="line">    </span><br><span class="line">    // 【4】Access flags</span><br><span class="line">    AccessFlags access_flags;</span><br><span class="line">    jint flags = cfs-&gt;get_u2_fast() &amp; JVM_RECOGNIZED_CLASS_MODIFIERS;</span><br><span class="line">    verify_legal_class_modifiers(flags, CHECK_(nullHandle));</span><br><span class="line">    access_flags.set_flags(flags);</span><br><span class="line">    </span><br><span class="line">    // 【5】This class and superclass</span><br><span class="line">    instanceKlassHandle super_klass;</span><br><span class="line">    u2 this_class_index = cfs-&gt;get_u2_fast();</span><br><span class="line">    Symbol*  class_name  = cp-&gt;unresolved_klass_at(this_class_index);</span><br><span class="line">    u2 super_class_index = cfs-&gt;get_u2_fast();</span><br><span class="line">    super_klass = instanceKlassHandle(THREAD, cp-&gt;resolved_klass_at(super_class_index));</span><br><span class="line">    </span><br><span class="line">    // 【6】 Interfaces</span><br><span class="line">    u2 itfs_len = cfs-&gt;get_u2_fast();</span><br><span class="line">    objArrayHandle local_interfaces;</span><br><span class="line">    if (itfs_len == 0) &#123;</span><br><span class="line">      local_interfaces = objArrayHandle(THREAD, Universe::the_empty_system_obj_array());</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">      local_interfaces = parse_interfaces(cp, itfs_len, class_loader, protection_domain, _class_name, CHECK_(nullHandle));</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    </span><br><span class="line">    // 【7】Fields (offsets are filled in later)</span><br><span class="line">    struct FieldAllocationCount fac = &#123;0,0,0,0,0,0,0,0,0,0&#125;;</span><br><span class="line">    objArrayHandle fields_annotations;</span><br><span class="line">    typeArrayHandle fields = parse_fields(cp, access_flags.is_interface(), &amp;fac, &amp;fields_annotations, CHECK_(nullHandle));</span><br><span class="line">    </span><br><span class="line">    // 【8】 Methods</span><br><span class="line">    objArrayOop methods_annotations_oop = NULL;</span><br><span class="line">    objArrayOop methods_parameter_annotations_oop = NULL;</span><br><span class="line">    objArrayOop methods_default_annotations_oop = NULL;</span><br><span class="line">    objArrayHandle methods = parse_methods(cp, access_flags.is_interface(),</span><br><span class="line">                                           &amp;promoted_flags,</span><br><span class="line">                                           &amp;has_final_method,</span><br><span class="line">                                           &amp;methods_annotations_oop,</span><br><span class="line">                                           &amp;methods_parameter_annotations_oop,</span><br><span class="line">                                           &amp;methods_default_annotations_oop,</span><br><span class="line">                                           CHECK_(nullHandle));</span><br><span class="line">    </span><br><span class="line">    </span><br><span class="line">    // 【9】 Size of vtable and itable</span><br><span class="line">    int vtable_size = 0;</span><br><span class="line">    int itable_size = 0;</span><br><span class="line">    int num_miranda_methods = 0;</span><br><span class="line">    </span><br><span class="line">    klassVtable::compute_vtable_size_and_num_mirandas(vtable_size,</span><br><span class="line">                                                      num_miranda_methods,</span><br><span class="line">                                                      super_klass(),</span><br><span class="line">                                                      methods(),</span><br><span class="line">                                                      access_flags,</span><br><span class="line">                                                      class_loader,</span><br><span class="line">                                                      class_name,</span><br><span class="line">                                                      local_interfaces(),</span><br><span class="line">                                                      CHECK_(nullHandle));</span><br><span class="line">    </span><br><span class="line">    itable_size = access_flags.is_interface() ? 0 : klassItable::compute_itable_size(transitive_interfaces);</span><br><span class="line">    </span><br><span class="line">    </span><br><span class="line">    // 【10】创建当前类instanceKlass，并且将已解析的值赋值进去。</span><br><span class="line">    klassOop ik = oopFactory::new_instanceKlass(name, vtable_size, itable_size,</span><br><span class="line">                                                static_field_size,</span><br><span class="line">                                                total_oop_map_count,</span><br><span class="line">                                                rt, CHECK_(nullHandle));</span><br><span class="line">    instanceKlassHandle this_klass (THREAD, ik);</span><br><span class="line">    </span><br><span class="line">    // Fill in information already parsed</span><br><span class="line">    this_klass-&gt;set_access_flags(access_flags);</span><br><span class="line">    this_klass-&gt;set_should_verify_class(verify);</span><br><span class="line">    // 。。。省略</span><br><span class="line">    </span><br><span class="line">    </span><br><span class="line">    // 【11】通知类已加载，更新PerfData计数器</span><br><span class="line">    ClassLoadingService::notify_class_loaded(instanceKlass::cast(this_klass()),</span><br><span class="line">                                             false /* not shared class */);</span><br><span class="line">    </span><br><span class="line">    return this_klass;                                         </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>上面代码的流程总结为下图：</p>
+<p><img src="/assets/blogImg/JVM/Class_Loading/Loading/1.png" alt></p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/JVM/" rel="tag"># JVM</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/06/08/JVM_Class_Loading_Introduce/" rel="next" title="HotSpot的类加载--概述">
+                <i class="fa fa-chevron-left"></i> HotSpot的类加载--概述
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/06/10/JVM_Class_Loading_Linking/" rel="prev" title="HotSpot的类加载--Linking">
+                HotSpot的类加载--Linking <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">62</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">6</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">8</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#加载-Loading"><span class="nav-number">1.</span> <span class="nav-text">加载 (Loading)</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#定义"><span class="nav-number">1.1.</span> <span class="nav-text">定义</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Classfile模块"><span class="nav-number">1.2.</span> <span class="nav-text">Classfile模块</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#加载类的主要过程"><span class="nav-number">1.3.</span> <span class="nav-text">加载类的主要过程</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

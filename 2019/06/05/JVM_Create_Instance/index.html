@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="本文记录在研究HotSpot对象创建时的知识点和不懂的地方。">
+<meta name="keywords" content="JVM">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HotSpot对象的创建">
+<meta property="og:url" content="http://yoursite.com/2019/06/05/JVM_Create_Instance/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="本文记录在研究HotSpot对象创建时的知识点和不懂的地方。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-07-04T07:09:08.710Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="HotSpot对象的创建">
+<meta name="twitter:description" content="本文记录在研究HotSpot对象创建时的知识点和不懂的地方。">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2019/06/05/JVM_Create_Instance/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>HotSpot对象的创建 | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/06/05/JVM_Create_Instance/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">HotSpot对象的创建
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-06-05 08:55:00" itemprop="dateCreated datePublished" datetime="2019-06-05T08:55:00+08:00">2019-06-05</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-07-04 15:09:08" itemprop="dateModified" datetime="2019-07-04T15:09:08+08:00">2019-07-04</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/JVM/" itemprop="url" rel="index"><span itemprop="name">JVM</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>本文记录在研究<strong>HotSpot对象创建</strong>时的知识点和不懂的地方。</p>
+<a id="more"></a>
+<h3 id="字节码-new-的格式"><a href="#字节码-new-的格式" class="headerlink" title="字节码 new 的格式"></a>字节码 new 的格式</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">--------------</span><br><span class="line">|     new     |</span><br><span class="line">--------------</span><br><span class="line">|  indexbyte1 |</span><br><span class="line">--------------</span><br><span class="line">|  indexbyte2 |</span><br><span class="line">--------------</span><br></pre></td></tr></table></figure>
+<p>通过 <code>(indexbyte1 &lt;&lt; 8) | indexbyte2</code> , 作为常量池中 class 的索引。</p>
+<h3 id="字节码-new-的实现"><a href="#字节码-new-的实现" class="headerlink" title="字节码 new 的实现"></a>字节码 new 的实现</h3><p>在<code>bytecodeInterpreter.cpp</code>：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br></pre></td><td class="code"><pre><span class="line">CASE(_new): &#123;</span><br><span class="line">    // 获取在 new 字节码后面的数值，这是对象类型信息在常量池的索引</span><br><span class="line">    u2 index = Bytes::get_Java_u2(pc+1);</span><br><span class="line">    constantPoolOop constants = istate-&gt;method()-&gt;constants();</span><br><span class="line">    // 如果已经解析过</span><br><span class="line">    if (!constants-&gt;tag_at(index).is_unresolved_klass()) &#123;</span><br><span class="line">        // Make sure klass is initialized and doesn&apos;t have a finalizer</span><br><span class="line">        // 获得常量池项</span><br><span class="line">        oop entry = constants-&gt;slot_at(index).get_oop();</span><br><span class="line">        assert(entry-&gt;is_klass(), &quot;Should be resolved klass&quot;);</span><br><span class="line">        klassOop k_entry = (klassOop) entry;</span><br><span class="line">        assert(k_entry-&gt;klass_part()-&gt;oop_is_instance(), &quot;Should be instanceKlass&quot;);</span><br><span class="line">        instanceKlass* ik = (instanceKlass*) k_entry-&gt;klass_part();</span><br><span class="line">        </span><br><span class="line">        // 快速分配</span><br><span class="line">        if ( ik-&gt;is_initialized() &amp;&amp; ik-&gt;can_be_fastpath_allocated() ) &#123;</span><br><span class="line">            // 先尝试在 TLAB分配</span><br><span class="line">            size_t obj_size = ik-&gt;size_helper();</span><br><span class="line">            oop result = NULL;</span><br><span class="line">            // If the TLAB isn&apos;t pre-zeroed then we&apos;ll have to do it</span><br><span class="line">            bool need_zero = !ZeroTLAB;</span><br><span class="line">            if (UseTLAB) &#123;</span><br><span class="line">              result = (oop) THREAD-&gt;tlab().allocate(obj_size);</span><br><span class="line">            &#125;</span><br><span class="line">            // TLAB分配不成功，则在 Eden 区分配。</span><br><span class="line">            if (result == NULL) &#123;</span><br><span class="line">              need_zero = true;</span><br><span class="line">              // Try allocate in shared eden</span><br><span class="line">        retry:</span><br><span class="line">              HeapWord* compare_to = *Universe::heap()-&gt;top_addr();</span><br><span class="line">              HeapWord* new_top = compare_to + obj_size;</span><br><span class="line">              if (new_top &lt;= *Universe::heap()-&gt;end_addr()) &#123;</span><br><span class="line">                if (Atomic::cmpxchg_ptr(new_top, Universe::heap()-&gt;top_addr(), compare_to) != compare_to) &#123;</span><br><span class="line">                  goto retry;</span><br><span class="line">                &#125;</span><br><span class="line">                result = (oop) compare_to;</span><br><span class="line">              &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            if (result != NULL) &#123;</span><br><span class="line">                // Initialize object (if nonzero size and need) and then the header</span><br><span class="line">                if (need_zero) &#123;</span><br><span class="line">                  HeapWord* to_zero = (HeapWord*) result + sizeof(oopDesc) /       oopSize;</span><br><span class="line">                  obj_size -= sizeof(oopDesc) / oopSize;</span><br><span class="line">                  if (obj_size &gt; 0 ) &#123;</span><br><span class="line">                    memset(to_zero, 0, obj_size * HeapWordSize);</span><br><span class="line">                  &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                if (UseBiasedLocking) &#123;</span><br><span class="line">                  result-&gt;set_mark(ik-&gt;prototype_header());</span><br><span class="line">                &#125; else &#123;</span><br><span class="line">                  result-&gt;set_mark(markOopDesc::prototype());</span><br><span class="line">                &#125;</span><br><span class="line">                result-&gt;set_klass_gap(0);</span><br><span class="line">                result-&gt;set_klass(k_entry);</span><br><span class="line">                SET_STACK_OBJECT(result, 0);</span><br><span class="line">                UPDATE_PC_AND_TOS_AND_CONTINUE(3, 1);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">        </span><br><span class="line">    // Slow case allocation（慢速分配）</span><br><span class="line">    CALL_VM(InterpreterRuntime::_new(THREAD, METHOD-&gt;constants(), index),</span><br><span class="line">                handle_exception);</span><br><span class="line">    SET_STACK_OBJECT(THREAD-&gt;vm_result(), 0);</span><br><span class="line">    THREAD-&gt;set_vm_result(NULL);</span><br><span class="line">    UPDATE_PC_AND_TOS_AND_CONTINUE(3, 1);</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h4 id="new-字节码流程的总结："><a href="#new-字节码流程的总结：" class="headerlink" title="new 字节码流程的总结："></a>new 字节码流程的总结：</h4><h5 id="分配内存"><a href="#分配内存" class="headerlink" title="分配内存"></a>分配内存</h5><ul>
+<li>根据new字节码后面的索引值，取出常量池中的对象类型信息。</li>
+<li>如果此类已经被加载和解析，那么采用“快速分配”，否则使用“慢速分配”。</li>
+<li><strong>快速分配</strong>:只在内存空间中划分可用内存，因此可以较高效的完成实例分配。同时，根据分配内存空间的来源，可以分为：<ul>
+<li>使用TLAB（ThreadLocal Allocation Buffer）</li>
+<li>使用Eden空间</li>
+</ul>
+</li>
+<li><strong>慢速分配</strong>:需要先进行类的解析、初始化。</li>
+<li>TLAB是线程私有空间，分配空间不需要加锁。如果分配失败，会通过加锁在Eden区分配</li>
+<li>Eden区是所有线程共享的，需要保证线程安全。这里采用 <strong><em>原子操作 + retry</em></strong> 的方式，直到分配成功。</li>
+</ul>
+<h5 id="初始化零值"><a href="#初始化零值" class="headerlink" title="初始化零值"></a>初始化零值</h5><p>JVM还会对分配好的实例空间进行赋初值（填零）</p>
+<h5 id="设置对象头"><a href="#设置对象头" class="headerlink" title="设置对象头"></a>设置对象头</h5><ul>
+<li>设置 mark_word</li>
+<li>设置 类型元数据指针</li>
+</ul>
+<h5 id="？？设置栈顶对象引用-（存在疑问）"><a href="#？？设置栈顶对象引用-（存在疑问）" class="headerlink" title="？？设置栈顶对象引用 ??（存在疑问）"></a>？？设置栈顶对象引用 ??（存在疑问）</h5><p>设置栈顶对象引用</p>
+<p><font color="red">【问题】<init>方法是什么时候调用呢？</init></font><br>上面 new字节码 的代码中，并没有调用对象的构造器方法 <init>，就把新建对象的引用压到栈顶。</init></p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/JVM/" rel="tag"># JVM</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/06/04/JVM_OOP_Klass/" rel="next" title="HotSpot中类与对象的表示">
+                <i class="fa fa-chevron-left"></i> HotSpot中类与对象的表示
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/06/05/JVM_Klass_vtbl_klassVtable/" rel="prev" title="Klass_vtbl和klassVtable的区别">
+                Klass_vtbl和klassVtable的区别 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">62</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">6</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">8</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#字节码-new-的格式"><span class="nav-number">1.</span> <span class="nav-text">字节码 new 的格式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#字节码-new-的实现"><span class="nav-number">2.</span> <span class="nav-text">字节码 new 的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#new-字节码流程的总结："><span class="nav-number">2.1.</span> <span class="nav-text">new 字节码流程的总结：</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#分配内存"><span class="nav-number">2.1.1.</span> <span class="nav-text">分配内存</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#初始化零值"><span class="nav-number">2.1.2.</span> <span class="nav-text">初始化零值</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#设置对象头"><span class="nav-number">2.1.3.</span> <span class="nav-text">设置对象头</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#？？设置栈顶对象引用-（存在疑问）"><span class="nav-number">2.1.4.</span> <span class="nav-text">？？设置栈顶对象引用 ??（存在疑问）</span></a></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

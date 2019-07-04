@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="在学习HotSpot的类加载部分源码的过程中，写下以下几篇文章：  HotSpot的类加载–概述 HotSpot的类加载–Loading HotSpot的类加载–Linking HotSpot的类加载–Initialization（本文）">
+<meta name="keywords" content="JVM">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HotSpot的类加载--Initialization">
+<meta property="og:url" content="http://yoursite.com/2019/06/11/JVM_Class_Loading_Initialization/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="在学习HotSpot的类加载部分源码的过程中，写下以下几篇文章：  HotSpot的类加载–概述 HotSpot的类加载–Loading HotSpot的类加载–Linking HotSpot的类加载–Initialization（本文）">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-07-04T08:25:21.298Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="HotSpot的类加载--Initialization">
+<meta name="twitter:description" content="在学习HotSpot的类加载部分源码的过程中，写下以下几篇文章：  HotSpot的类加载–概述 HotSpot的类加载–Loading HotSpot的类加载–Linking HotSpot的类加载–Initialization（本文）">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2019/06/11/JVM_Class_Loading_Initialization/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>HotSpot的类加载--Initialization | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/06/11/JVM_Class_Loading_Initialization/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">HotSpot的类加载--Initialization
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-06-11 08:55:00" itemprop="dateCreated datePublished" datetime="2019-06-11T08:55:00+08:00">2019-06-11</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-07-04 16:25:21" itemprop="dateModified" datetime="2019-07-04T16:25:21+08:00">2019-07-04</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/JVM/" itemprop="url" rel="index"><span itemprop="name">JVM</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>在学习HotSpot的类加载部分源码的过程中，写下以下几篇文章：</p>
+<ul>
+<li>HotSpot的类加载–概述</li>
+<li>HotSpot的类加载–Loading</li>
+<li>HotSpot的类加载–Linking</li>
+<li>HotSpot的类加载–Initialization（本文）</li>
+</ul>
+<a id="more"></a>
+<h3 id="初始化"><a href="#初始化" class="headerlink" title="初始化"></a>初始化</h3><p>类或接口的初始化就是执行它的初始化方法（即类构造器<code>&lt;clinit&gt;()</code>方法）。</p>
+<h4 id="关于-lt-clinit-gt"><a href="#关于-lt-clinit-gt" class="headerlink" title="关于&lt;clinit&gt;"></a>关于<code>&lt;clinit&gt;</code></h4><ul>
+<li>是由编译器自动收集类中所有类变量的赋值动作和静态语句块合并生成的。</li>
+<li>虚拟机会保证子类的<code>&lt;clinit&gt;</code>执行之前，父类的<code>&lt;clinit&gt;</code>已经执行完毕。</li>
+</ul>
+<h4 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h4><p>看到<code>instanceKlass::initialize_impl</code>方法，省略部分代码：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br></pre></td><td class="code"><pre><span class="line">void instanceKlass::initialize_impl(instanceKlassHandle this_oop, TRAPS) &#123;</span><br><span class="line"></span><br><span class="line">  // Make sure klass is linked (verified) before initialization</span><br><span class="line">  // A class could already be verified, since it has been reflected upon.</span><br><span class="line">  this_oop-&gt;link_class(CHECK);</span><br><span class="line"></span><br><span class="line">  bool wait = false;</span><br><span class="line"></span><br><span class="line">  // 【 Step 1】 获取同步锁</span><br><span class="line">  &#123; ObjectLocker ol(this_oop, THREAD);</span><br><span class="line"></span><br><span class="line">    Thread *self = THREAD; // it&apos;s passed the current thread</span><br><span class="line"></span><br><span class="line">    // 【 Step 2】</span><br><span class="line">    // If we were to use wait() instead of waitInterruptibly() then</span><br><span class="line">    // we might end up throwing IE from link/symbol resolution sites</span><br><span class="line">    // that aren&apos;t expected to throw.  This would wreak havoc.  See 6320309.</span><br><span class="line">    // 如果类正在被其他线程初始化，那么释放锁，并且挂起当前线程，直到初始化完成。</span><br><span class="line">    while(this_oop-&gt;is_being_initialized() &amp;&amp; !this_oop-&gt;is_reentrant_initialization(self)) &#123;</span><br><span class="line">        wait = true;</span><br><span class="line">      ol.waitUninterruptibly(CHECK);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // 【 Step 3】</span><br><span class="line">    // 如果类被当前线程初始化中，那么这个属于递归的调用了初始化方法，只需要释放锁并退出就可以了。</span><br><span class="line">    if (this_oop-&gt;is_being_initialized() &amp;&amp; this_oop-&gt;is_reentrant_initialization(self)) &#123;</span><br><span class="line">      DTRACE_CLASSINIT_PROBE_WAIT(recursive, instanceKlass::cast(this_oop()), -1,wait);</span><br><span class="line">      return;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // 【 Step 4】</span><br><span class="line">    // 如果类已经初始化完成，那么只需要释放锁并退出就可以了。</span><br><span class="line">    if (this_oop-&gt;is_initialized()) &#123;</span><br><span class="line">      DTRACE_CLASSINIT_PROBE_WAIT(concurrent, instanceKlass::cast(this_oop()), -1,wait);</span><br><span class="line">      return;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // 【 Step 5】</span><br><span class="line">    // 如果类初始化出错，那么释放锁并抛出 NoClassDefFoundError</span><br><span class="line">    if (this_oop-&gt;is_in_error_state()) &#123;</span><br><span class="line">      DTRACE_CLASSINIT_PROBE_WAIT(erroneous, instanceKlass::cast(this_oop()), -1,wait);</span><br><span class="line">      ResourceMark rm(THREAD);</span><br><span class="line">      const char* desc = &quot;Could not initialize class &quot;;</span><br><span class="line">      const char* className = this_oop-&gt;external_name();</span><br><span class="line">      size_t msglen = strlen(desc) + strlen(className) + 1;</span><br><span class="line">      char* message = NEW_RESOURCE_ARRAY(char, msglen);</span><br><span class="line">      if (NULL == message) &#123;</span><br><span class="line">        // Out of memory: can&apos;t create detailed error message</span><br><span class="line">        THROW_MSG(vmSymbols::java_lang_NoClassDefFoundError(), className);</span><br><span class="line">      &#125; else &#123;</span><br><span class="line">        jio_snprintf(message, msglen, &quot;%s%s&quot;, desc, className);</span><br><span class="line">        THROW_MSG(vmSymbols::java_lang_NoClassDefFoundError(), message);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    // 【 Step 6】</span><br><span class="line">    // 这种情况表面：这个类就是被当前线程初始化，设置 oop 的状态</span><br><span class="line">    this_oop-&gt;set_init_state(being_initialized);</span><br><span class="line">    this_oop-&gt;set_init_thread(self);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  // 【 Step 7】</span><br><span class="line">  // 如果当前类不是接口，并且它的父类没有初始化，那么递归调用初始化方法（如果需要的话，进行相应的验证）。</span><br><span class="line">  // 如果父类的初始化失败了：</span><br><span class="line">  // (1) 获取同步锁        (2) 设置当前类状态为初始化失败</span><br><span class="line">  // (3) 通知等待的线程    (4)释放锁。     (5) 抛出错误</span><br><span class="line">  klassOop super_klass = this_oop-&gt;super();</span><br><span class="line">  if (super_klass != NULL &amp;&amp; !this_oop-&gt;is_interface() &amp;&amp; Klass::cast(super_klass)-&gt;should_be_initialized()) &#123;</span><br><span class="line">    Klass::cast(super_klass)-&gt;initialize(THREAD);</span><br><span class="line"></span><br><span class="line">    if (HAS_PENDING_EXCEPTION) &#123;</span><br><span class="line">      Handle e(THREAD, PENDING_EXCEPTION);</span><br><span class="line">      CLEAR_PENDING_EXCEPTION;</span><br><span class="line">      &#123;</span><br><span class="line">        EXCEPTION_MARK;</span><br><span class="line">        this_oop-&gt;set_initialization_state_and_notify(initialization_error, THREAD); // Locks object, set state, and notify all waiting threads</span><br><span class="line">        CLEAR_PENDING_EXCEPTION;   // ignore any exception thrown, superclass initialization error is thrown below</span><br><span class="line">      &#125;</span><br><span class="line">      DTRACE_CLASSINIT_PROBE_WAIT(super__failed, instanceKlass::cast(this_oop()), -1,wait);</span><br><span class="line">      THROW_OOP(e());</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  // 【 Step 8】</span><br><span class="line">  // 调用类构造器</span><br><span class="line">  &#123;</span><br><span class="line">    assert(THREAD-&gt;is_Java_thread(), &quot;non-JavaThread in initialize_impl&quot;);</span><br><span class="line">    JavaThread* jt = (JavaThread*)THREAD;</span><br><span class="line">    DTRACE_CLASSINIT_PROBE_WAIT(clinit, instanceKlass::cast(this_oop()), -1,wait);</span><br><span class="line">    // Timer includes any side effects of class initialization (resolution,</span><br><span class="line">    // etc), but not recursive entry into call_class_initializer().</span><br><span class="line">    PerfClassTraceTime timer(ClassLoader::perf_class_init_time(),</span><br><span class="line">                             ClassLoader::perf_class_init_selftime(),</span><br><span class="line">                             ClassLoader::perf_classes_inited(),</span><br><span class="line">                             jt-&gt;get_thread_stat()-&gt;perf_recursion_counts_addr(),</span><br><span class="line">                             jt-&gt;get_thread_stat()-&gt;perf_timers_addr(),</span><br><span class="line">                             PerfClassTraceTime::CLASS_CLINIT);</span><br><span class="line">    this_oop-&gt;call_class_initializer(THREAD);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  // Step 9</span><br><span class="line">  // 如果类构造器执行完成，就：</span><br><span class="line">  // (1) 获取同步锁        (2) 设置当前类状态为初始化完成</span><br><span class="line">  // (3) 通知等待的线程    (4)释放锁。 </span><br><span class="line">  if (!HAS_PENDING_EXCEPTION) &#123;</span><br><span class="line">    this_oop-&gt;set_initialization_state_and_notify(fully_initialized, CHECK);</span><br><span class="line">    &#123; ResourceMark rm(THREAD);</span><br><span class="line">      debug_only(this_oop-&gt;vtable()-&gt;verify(tty, true);)</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  else &#123;</span><br><span class="line">    // Step 10 and 11</span><br><span class="line">    Handle e(THREAD, PENDING_EXCEPTION);</span><br><span class="line">    CLEAR_PENDING_EXCEPTION;</span><br><span class="line">    &#123;</span><br><span class="line">      EXCEPTION_MARK;</span><br><span class="line">      this_oop-&gt;set_initialization_state_and_notify(initialization_error, THREAD);</span><br><span class="line">      CLEAR_PENDING_EXCEPTION;   // ignore any exception thrown, class initialization error is thrown below</span><br><span class="line">    &#125;</span><br><span class="line">    DTRACE_CLASSINIT_PROBE_WAIT(error, instanceKlass::cast(this_oop()), -1,wait);</span><br><span class="line">    if (e-&gt;is_a(SystemDictionary::Error_klass())) &#123;</span><br><span class="line">      THROW_OOP(e());</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">      JavaCallArguments args(e);</span><br><span class="line">      THROW_ARG(vmSymbols::java_lang_ExceptionInInitializerError(),</span><br><span class="line">                vmSymbols::throwable_void_signature(),</span><br><span class="line">                &amp;args);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  DTRACE_CLASSINIT_PROBE_WAIT(end, instanceKlass::cast(this_oop()), -1,wait);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/JVM/" rel="tag"># JVM</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/06/10/JVM_Class_Loading_Linking/" rel="next" title="HotSpot的类加载--Linking">
+                <i class="fa fa-chevron-left"></i> HotSpot的类加载--Linking
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/06/12/JVM_ConstantPoolOop/" rel="prev" title="HotSpot的运行时常量池">
+                HotSpot的运行时常量池 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">62</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">6</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">8</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#初始化"><span class="nav-number">1.</span> <span class="nav-text">初始化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#关于-lt-clinit-gt"><span class="nav-number">1.1.</span> <span class="nav-text">关于&lt;clinit&gt;</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#实现"><span class="nav-number">1.2.</span> <span class="nav-text">实现</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

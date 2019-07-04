@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="学习JVM源码Synchronized锁部分，写了如下几篇文章：  Synchronized底层实现—-概论 Synchronized底层实现—-偏向锁 Synchronized底层实现—-轻量级锁 Synchronized底层实现—-重量级锁（本文）">
+<meta name="keywords" content="JVM">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Synchronized底层实现—-重量级锁（未完）">
+<meta property="og:url" content="http://yoursite.com/2019/06/26/JVM_Synchronized_HeavyWeight/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="学习JVM源码Synchronized锁部分，写了如下几篇文章：  Synchronized底层实现—-概论 Synchronized底层实现—-偏向锁 Synchronized底层实现—-轻量级锁 Synchronized底层实现—-重量级锁（本文）">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-07-04T13:48:30.069Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Synchronized底层实现—-重量级锁（未完）">
+<meta name="twitter:description" content="学习JVM源码Synchronized锁部分，写了如下几篇文章：  Synchronized底层实现—-概论 Synchronized底层实现—-偏向锁 Synchronized底层实现—-轻量级锁 Synchronized底层实现—-重量级锁（本文）">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2019/06/26/JVM_Synchronized_HeavyWeight/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Synchronized底层实现—-重量级锁（未完） | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/06/26/JVM_Synchronized_HeavyWeight/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Synchronized底层实现—-重量级锁（未完）
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-06-26 08:55:00" itemprop="dateCreated datePublished" datetime="2019-06-26T08:55:00+08:00">2019-06-26</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-07-04 21:48:30" itemprop="dateModified" datetime="2019-07-04T21:48:30+08:00">2019-07-04</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/JVM/" itemprop="url" rel="index"><span itemprop="name">JVM</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>学习JVM源码Synchronized锁部分，写了如下几篇文章：</p>
+<ul>
+<li>Synchronized底层实现—-概论</li>
+<li>Synchronized底层实现—-偏向锁</li>
+<li>Synchronized底层实现—-轻量级锁</li>
+<li>Synchronized底层实现—-重量级锁（本文）</li>
+</ul>
+<a id="more"></a>
+<h3 id="锁膨胀"><a href="#锁膨胀" class="headerlink" title="锁膨胀"></a>锁膨胀</h3><h4 id="锁膨胀发生的时机？"><a href="#锁膨胀发生的时机？" class="headerlink" title="锁膨胀发生的时机？"></a><font color="red">锁膨胀发生的时机？</font></h4><p>目前已知的是轻量级锁膨胀为重量级锁，还有其他场景？<font color="red">待解决</font>！</p>
+<h4 id="锁膨胀的逻辑"><a href="#锁膨胀的逻辑" class="headerlink" title="锁膨胀的逻辑"></a>锁膨胀的逻辑</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br></pre></td><td class="code"><pre><span class="line">ObjectMonitor * ATTR ObjectSynchronizer::inflate (Thread * Self, oop object) &#123;</span><br><span class="line"></span><br><span class="line">  for (;;) &#123;</span><br><span class="line">    const markOop mark = object-&gt;mark() ;</span><br><span class="line">    assert (!mark-&gt;has_bias_pattern(), &quot;invariant&quot;) </span><br><span class="line">    </span><br><span class="line">    // The mark can be in one of the following states:</span><br><span class="line">    // *  Inflated（重量级锁状态）      - just return（直接返回）</span><br><span class="line">    // *  Stack-locked（轻量级锁状态）  - coerce it to inflated（膨胀）</span><br><span class="line">    // *  INFLATING（膨胀中）          - busy wait for conversion tcomplete（忙等待直到膨胀完成）</span><br><span class="line">    // *  Neutral（无锁状态）          - aggressively inflate thobject（膨胀）</span><br><span class="line">    // *  BIASED（偏向锁）             - Illegal.  We should never sethis（非法状态，在这里不会出现</span><br><span class="line">    </span><br><span class="line">    </span><br><span class="line">    // ## 1. 状态是【inflated】，已经是重量级锁状态了，直接返回</span><br><span class="line">    if (mark-&gt;has_monitor()) &#123;</span><br><span class="line">        ObjectMonitor * inf = mark-&gt;monitor() ;</span><br><span class="line">        assert (inf-&gt;header()-&gt;is_neutral(), &quot;invariant&quot;);</span><br><span class="line">        assert (inf-&gt;object() == object, &quot;invariant&quot;) ;</span><br><span class="line">        assert (ObjectSynchronizer::verify_objmon_isinpool(inf), &quot;monitois invalid&quot;);</span><br><span class="line">        return inf ;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // ## 2. 状态是【inflation in progress】，锁膨胀中。</span><br><span class="line">    // （1）说明当前有其他线程在膨胀这个锁</span><br><span class="line">    // （2）只有一个线程可以膨胀锁，其他线程必须等待</span><br><span class="line">    if (mark == markOopDesc::INFLATING()) &#123;</span><br><span class="line">       TEVENT (Inflate: spin while INFLATING) ;</span><br><span class="line">       ReadStableMark(object) ;</span><br><span class="line">       continue ;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // ## 3. 状态是【stack-locked】，轻量级锁状态，需要锁膨胀。</span><br><span class="line">    if (mark-&gt;has_locker()) &#123;</span><br><span class="line">      // ## 3.1 分配并初始化一个 ObjectMonitor 对象</span><br><span class="line">      ObjectMonitor * m = omAlloc (Self) ;</span><br><span class="line">      m-&gt;Recycle();</span><br><span class="line">      m-&gt;_Responsible  = NULL ;</span><br><span class="line">      m-&gt;OwnerIsThread = 0 ;</span><br><span class="line">      m-&gt;_recursions   = 0 ;</span><br><span class="line">      m-&gt;_SpinDuration = ObjectMonitor::Knob_SpinLimit ;   /Considermaintain by type/class</span><br><span class="line">    </span><br><span class="line">      // ## 3.2 使用 CAS 将锁对象的 Mark Word 设置为 【INFLATING】状态</span><br><span class="line">      // 用于表示当前这个 Mark Word 是 【Busy】</span><br><span class="line">      markOop cmp = (markOop) Atomic::cmpxchg_pt(markOopDesc::INFLATING(), object-&gt;mark_addr(), mark) ;</span><br><span class="line">      if (cmp != mark) &#123;</span><br><span class="line">        omRelease (Self, m, true) ;</span><br><span class="line">        continue ;       // Interference -- just retry</span><br><span class="line">      &#125;</span><br><span class="line">      </span><br><span class="line">      // ## 3.3 取出保存在栈中 Lock Record 的【displaced mark word】</span><br><span class="line">      markOop dmw = mark-&gt;displaced_mark_helper() ;</span><br><span class="line">      assert (dmw-&gt;is_neutral(), &quot;invariant&quot;) ;</span><br><span class="line">      </span><br><span class="line">      // ## 3.4 设置 monitor 的字段</span><br><span class="line">      m-&gt;set_header(dmw) ;</span><br><span class="line">      m-&gt;set_owner(mark-&gt;locker());</span><br><span class="line">      m-&gt;set_object(object);</span><br><span class="line">      </span><br><span class="line">      guarantee (object-&gt;mark() == markOopDesc::INFLATING(), &quot;invariant&quot;;</span><br><span class="line">      </span><br><span class="line">      // ## 3.5 将锁对象头设置为【重量级锁】状态</span><br><span class="line">      object-&gt;release_set_mark(markOopDesc::encode(m));</span><br><span class="line">      </span><br><span class="line">      // ... 省略</span><br><span class="line">      </span><br><span class="line">      return m ;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    </span><br><span class="line">    // ## 4. 状态是【neutral】，无锁状态，需要膨胀</span><br><span class="line">    assert (mark-&gt;is_neutral(), &quot;invariant&quot;);</span><br><span class="line">    </span><br><span class="line">    // ## 4.1 分配并初始化一个 ObjectMonitor 对象</span><br><span class="line">    ObjectMonitor * m = omAlloc (Self) ;</span><br><span class="line">    m-&gt;Recycle();</span><br><span class="line">    m-&gt;set_header(mark);</span><br><span class="line">    m-&gt;set_owner(NULL);</span><br><span class="line">    m-&gt;set_object(object);</span><br><span class="line">    m-&gt;OwnerIsThread = 1 ;</span><br><span class="line">    m-&gt;_recursions   = 0 ;</span><br><span class="line">    m-&gt;_Responsible  = NULL ;</span><br><span class="line">    m-&gt;_SpinDuration = ObjectMonitor::Knob_SpinLimit ;       // considerkeep metastats by type/class</span><br><span class="line">    </span><br><span class="line">    // ## 4.2 使用 CAS 将锁对象的 Mark Word 设置为【重量级锁状态】</span><br><span class="line">    if (Atomic::cmpxchg_ptr (markOopDesc::encode(m), object-&gt;mark_addr()mark) != mark) &#123;</span><br><span class="line">      m-&gt;set_object (NULL) ;</span><br><span class="line">      m-&gt;set_owner  (NULL) ;</span><br><span class="line">      m-&gt;OwnerIsThread = 0 ;</span><br><span class="line">      m-&gt;Recycle() ;</span><br><span class="line">      omRelease (Self, m, true) ;</span><br><span class="line">      m = NULL ;</span><br><span class="line">      continue ;</span><br><span class="line">      // interference - the markword changed - just retry.</span><br><span class="line">      // The state-transitions are one-way, so there&apos;s no chance of</span><br><span class="line">      // live-lock -- &quot;Inflated&quot; is an absorbing state.</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // ... 省略</span><br><span class="line">    </span><br><span class="line">    return m ;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>总结这个方法：</p>
+<ul>
+<li>锁在这个方法完成“膨胀”</li>
+<li>如果有多个线程同时执行“膨胀”操作，只有一个线程可以执行，其他线程必须等待</li>
+<li>需要膨胀的锁会有如下不同状态：<ul>
+<li>Inflated（重量级锁状态）：直接返回</li>
+<li>Stack-locked（轻量级锁状态）： 进行锁膨胀</li>
+<li>INFLATING（膨胀中）：忙等待直到完成（其他线程执行完膨胀逻辑）</li>
+<li>Neutral（无锁状态）：进行锁膨胀</li>
+</ul>
+</li>
+<li>对于轻量锁的膨胀，分为如下几步：<ul>
+<li>分配并初始化一个 ObjectMonitor 对象</li>
+<li>将锁对象设置为【INFLATING】状态</li>
+<li>设置 ObjectMonitor 对象：<ul>
+<li><code>header</code>字段设置为保存在栈中 Lock Record 的【displaced mark word】（即原来锁对象的 mark word）</li>
+<li><code>owner</code>字段设置为栈中 Lock Record 的地址</li>
+<li><code>object</code>字段设置为锁对象</li>
+</ul>
+</li>
+<li>设置锁对象的 mark word 为重量级锁</li>
+</ul>
+</li>
+</ul>
+<h3 id="获取锁"><a href="#获取锁" class="headerlink" title="获取锁"></a>获取锁</h3><p>获取锁的逻辑如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br></pre></td><td class="code"><pre><span class="line">void ATTR ObjectMonitor::enter(TRAPS) &#123;</span><br><span class="line"></span><br><span class="line">  Thread * const Self = THREAD ;</span><br><span class="line">  void * cur ;</span><br><span class="line">  </span><br><span class="line">  // ## 1. 使用 CAS 设置当前线程到 _owner 字段，如果成功，那么当前线程获得锁</span><br><span class="line">  // 如果 cur（_owner 原来的值） 为 NULL，表示【原来是无锁状态】</span><br><span class="line">  cur = Atomic::cmpxchg_ptr (Self, &amp;_owner, NULL) ;</span><br><span class="line">  if (cur == NULL) &#123;</span><br><span class="line">    assert (_recursions == 0   , &quot;invariant&quot;) ;</span><br><span class="line">    assert (_owner      == Self, &quot;invariant&quot;) ;</span><br><span class="line">    return ;</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  // ## 2.【锁重入】的情况，直接返回</span><br><span class="line">  if (cur == Self) &#123;</span><br><span class="line">    _recursions ++ ;</span><br><span class="line">    return ;</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  // ## 3. 如果 cur 是当前线程的一个锁记录的地址</span><br><span class="line">  //  （1）在轻量级锁【膨胀】时，会将 _owner 字段设置为锁记录的地址</span><br><span class="line">  //  （2）因此，这里可以判断【当前线程是否原来持有轻量级锁的线程】</span><br><span class="line">  //  （3）设置 _owner 字段为当前线程</span><br><span class="line">  if (Self-&gt;is_lock_owned ((address)cur)) &#123;</span><br><span class="line">    _recursions = 1 ;</span><br><span class="line">    _owner = Self ;</span><br><span class="line">    OwnerIsThread = 1 ;</span><br><span class="line">    return ;</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  // --------&gt;  来到这里说明遇到锁竞争了  &lt;------------</span><br><span class="line">  </span><br><span class="line">  // ## 4. 先尝试自旋获取锁</span><br><span class="line">  // （1）主要是用 CAS 将当前线程设置到 _owner 字段。</span><br><span class="line">  // （2）会检查是否有GC进行，如果有，跳出自旋。</span><br><span class="line">  // （3）如果自旋得到锁，返回</span><br><span class="line">  if (Knob_SpinEarly &amp;&amp; TrySpin (Self) &gt; 0) &#123;</span><br><span class="line">    Self-&gt;_Stalled = 0 ;</span><br><span class="line">    return ;</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  // ... 省略</span><br><span class="line">  </span><br><span class="line">  &#123;</span><br><span class="line">    // ## 5. 设置 Java Thread 和关联的 osThread 的状态</span><br><span class="line">    JavaThreadBlockedOnMonitorEnterState jtbmes(jt, this);</span><br><span class="line">    OSThreadContendState osts(Self-&gt;osthread());</span><br><span class="line">    ThreadBlockInVM tbivm(jt);</span><br><span class="line">    </span><br><span class="line">      </span><br><span class="line">    // ## 6. </span><br><span class="line">    for (;;) &#123;</span><br><span class="line">      // 这里和 【park、unpark】相关</span><br><span class="line">      jt-&gt;set_suspend_equivalent();</span><br><span class="line">      </span><br><span class="line">      EnterI (THREAD) ;</span><br><span class="line">      </span><br><span class="line">      if (!ExitSuspendEquivalent(jt)) break ;</span><br><span class="line">      </span><br><span class="line">      _recursions = 0 ;</span><br><span class="line">    </span><br><span class="line">    &#125;</span><br><span class="line">      </span><br><span class="line">      </span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/JVM/" rel="tag"># JVM</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/06/25/JVM_Synchronized_LightWeight/" rel="next" title="Synchronized底层实现—-轻量级锁">
+                <i class="fa fa-chevron-left"></i> Synchronized底层实现—-轻量级锁
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/07/04/JVM_SafePoint/" rel="prev" title="HotSpot的SafePoint">
+                HotSpot的SafePoint <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">62</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">6</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">8</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#锁膨胀"><span class="nav-number">1.</span> <span class="nav-text">锁膨胀</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#锁膨胀发生的时机？"><span class="nav-number">1.1.</span> <span class="nav-text">锁膨胀发生的时机？</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#锁膨胀的逻辑"><span class="nav-number">1.2.</span> <span class="nav-text">锁膨胀的逻辑</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#获取锁"><span class="nav-number">2.</span> <span class="nav-text">获取锁</span></a></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

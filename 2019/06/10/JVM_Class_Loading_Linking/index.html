@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="在学习HotSpot的类加载部分源码的过程中，写下以下几篇文章：  HotSpot的类加载–概述 HotSpot的类加载–Loading HotSpot的类加载–Linking（本文） HotSpot的类加载–Initialization">
+<meta name="keywords" content="JVM">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HotSpot的类加载--Linking">
+<meta property="og:url" content="http://yoursite.com/2019/06/10/JVM_Class_Loading_Linking/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="在学习HotSpot的类加载部分源码的过程中，写下以下几篇文章：  HotSpot的类加载–概述 HotSpot的类加载–Loading HotSpot的类加载–Linking（本文） HotSpot的类加载–Initialization">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-07-04T08:22:57.667Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="HotSpot的类加载--Linking">
+<meta name="twitter:description" content="在学习HotSpot的类加载部分源码的过程中，写下以下几篇文章：  HotSpot的类加载–概述 HotSpot的类加载–Loading HotSpot的类加载–Linking（本文） HotSpot的类加载–Initialization">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2019/06/10/JVM_Class_Loading_Linking/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>HotSpot的类加载--Linking | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/06/10/JVM_Class_Loading_Linking/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">HotSpot的类加载--Linking
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-06-10 08:55:00" itemprop="dateCreated datePublished" datetime="2019-06-10T08:55:00+08:00">2019-06-10</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-07-04 16:22:57" itemprop="dateModified" datetime="2019-07-04T16:22:57+08:00">2019-07-04</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/JVM/" itemprop="url" rel="index"><span itemprop="name">JVM</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>在学习HotSpot的类加载部分源码的过程中，写下以下几篇文章：</p>
+<ul>
+<li>HotSpot的类加载–概述</li>
+<li>HotSpot的类加载–Loading</li>
+<li>HotSpot的类加载–Linking（本文）</li>
+<li>HotSpot的类加载–Initialization</li>
+</ul>
+<a id="more"></a>
+<h3 id="链接（Linking）"><a href="#链接（Linking）" class="headerlink" title="链接（Linking）"></a>链接（Linking）</h3><p>链接的实现：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br></pre></td><td class="code"><pre><span class="line">bool instanceKlass::link_class_impl(</span><br><span class="line">    instanceKlassHandle this_oop, bool throw_verifyerror, TRAPS) &#123;</span><br><span class="line"></span><br><span class="line">    </span><br><span class="line">    // 【1】link super class before linking this class</span><br><span class="line">    instanceKlassHandle super(THREAD, this_oop-&gt;super());</span><br><span class="line">    if (super.not_null()) &#123;</span><br><span class="line">        link_class_impl(super, throw_verifyerror, CHECK_false);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // 【2】link all interfaces implemented by this class before linking this class</span><br><span class="line">    objArrayHandle interfaces (THREAD, this_oop-&gt;local_interfaces());</span><br><span class="line">    int num_interfaces = interfaces-&gt;length();</span><br><span class="line">    for (int index = 0; index &lt; num_interfaces; index++) &#123;</span><br><span class="line">        HandleMark hm(THREAD);</span><br><span class="line">        instanceKlassHandle ih(THREAD, klassOop(interfaces-&gt;obj_at(index)));</span><br><span class="line">        link_class_impl(ih, throw_verifyerror, CHECK_false);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // in case the class is linked in the process of linking its superclasses</span><br><span class="line">    if (this_oop-&gt;is_linked()) &#123;</span><br><span class="line">        return true;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    </span><br><span class="line">    // 【3】verification &amp; rewriting</span><br><span class="line">    &#123;</span><br><span class="line">        // 加锁</span><br><span class="line">        ObjectLocker ol(this_oop, THREAD);</span><br><span class="line">         </span><br><span class="line">        // rewritten will have been set if loader constraint error found</span><br><span class="line">        // on an earlier link attempt</span><br><span class="line">        // don&apos;t verify or rewrite if already rewritten</span><br><span class="line">        if (!this_oop-&gt;is_linked()) &#123;</span><br><span class="line">        </span><br><span class="line">            if (!this_oop-&gt;is_rewritten()) &#123;</span><br><span class="line">                bool verify_ok = verify_code(this_oop, throw_verifyerror, THREAD);</span><br><span class="line">                if (!verify_ok) &#123;</span><br><span class="line">                    return false;</span><br><span class="line">                &#125;</span><br><span class="line">                </span><br><span class="line">                // Just in case a side-effect of verify linked this class already</span><br><span class="line">                // (which can sometimes happen since the verifier loads classes</span><br><span class="line">                // using custom class loaders, which are free to initialize things)</span><br><span class="line">                if (this_oop-&gt;is_linked()) &#123;</span><br><span class="line">                    return true;</span><br><span class="line">                &#125;</span><br><span class="line">            </span><br><span class="line">                // also sets rewritten</span><br><span class="line">                // “重写”：是为了支持更好的解析器运行性能，向常量池添加缓存，</span><br><span class="line">                // 并调整相应字节码的常量池索引重新指向常量池Cache索引</span><br><span class="line">                this_oop-&gt;rewrite_class(CHECK_false);</span><br><span class="line">            &#125;</span><br><span class="line">            </span><br><span class="line">            </span><br><span class="line">            // relocate jsrs and link methods after they are all rewritten</span><br><span class="line">            // 为Java方法配置编译器或解析器入口(entry point)</span><br><span class="line">            this_oop-&gt;relocate_and_link_methods(CHECK_false);</span><br><span class="line">            </span><br><span class="line">            // Initialize the vtable and interface table after</span><br><span class="line">            // methods have been rewritten since rewrite may</span><br><span class="line">            // fabricate new methodOops.</span><br><span class="line">            // also does loader constraint checking</span><br><span class="line">            if (!this_oop()-&gt;is_shared()) &#123;</span><br><span class="line">                ResourceMark rm(THREAD);</span><br><span class="line">                this_oop-&gt;vtable()-&gt;initialize_vtable(true, CHECK_false);</span><br><span class="line">                this_oop-&gt;itable()-&gt;initialize_itable(true, CHECK_false);</span><br><span class="line">            &#125;</span><br><span class="line">            </span><br><span class="line">            this_oop-&gt;set_init_state(linked);</span><br><span class="line">            if (JvmtiExport::should_post_class_prepare()) &#123;</span><br><span class="line">                Thread *thread = THREAD;</span><br><span class="line">                assert(thread-&gt;is_Java_thread(), &quot;thread-&gt;is_Java_thread()&quot;);</span><br><span class="line">                JvmtiExport::post_class_prepare((JavaThread *) thread, this_oop());</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    return true;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h4 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h4><h5 id="目的"><a href="#目的" class="headerlink" title="目的"></a>目的</h5><p>确保字节流包含的信息是安全的。</p>
+<p>虽然Java编译器可以检查到如错误类型转换等错误，但是，Class文件并不一定由编译器编译得到。因此，<strong>验证</strong>是必须的。</p>
+<h5 id="步骤"><a href="#步骤" class="headerlink" title="步骤"></a>步骤</h5><p>从JVM规范来看，主要有4个步骤：==文件格式验证、元数据验证、字节码验证、符号引用验证==。</p>
+<h5 id="文件格式验证"><a href="#文件格式验证" class="headerlink" title="文件格式验证"></a>文件格式验证</h5><p>这里验证的有：</p>
+<ul>
+<li>magic number是否为 0xCAFEBABE</li>
+<li>主次版本号是否在本版本虚拟机处理范围内</li>
+<li>对常量池的检验：<ul>
+<li>常量池大小</li>
+<li>严格按照规范读取常量池，如果遇到格式不对、不支持的tag等就报错</li>
+</ul>
+</li>
+<li>对</li>
+<li>… 省略</li>
+</ul>
+<h6 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h6><p>HotSpot对此的实现，是在“加载”（Loading）阶段的，在<code>parseClassFile</code>方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">// Magic value</span><br><span class="line">u4 magic = cfs-&gt;get_u4_fast();</span><br><span class="line">guarantee_property(magic == JAVA_CLASSFILE_MAGIC,</span><br><span class="line">                     &quot;Incompatible magic value %u in class file %s&quot;,</span><br><span class="line">                     magic, CHECK_(nullHandle));</span><br></pre></td></tr></table></figure></p>
+<p>上面是读取字节流并检验magic number的代码。</p>
+<h6 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h6><ul>
+<li>这个阶段的验证是基于字节流的，只有通过验证，才能进入内存的方法区（就是在方法区创建<code>klassOop</code>，把从流中读取到信息赋值到它里面）</li>
+<li>==这里的验证，关注的是文件格式方面的==</li>
+</ul>
+<h5 id="元数据验证"><a href="#元数据验证" class="headerlink" title="元数据验证"></a>元数据验证</h5><p>验证的内容有：</p>
+<ul>
+<li>这个类能否访问它的父类、它所实现的接口</li>
+<li>这个类有没有重写了父类的<code>final</code>方法</li>
+<li>….</li>
+</ul>
+<h6 id="实现-1"><a href="#实现-1" class="headerlink" title="实现"></a>实现</h6><p>这部分的检查，有一些其实在读取流的时候就做了（如是否继承了<code>final</code>类），有些是在创建好<code>klassOop</code>之后的，<font color="red">但都在<code>parseClassFile</code>方法里面！</font></p>
+<h6 id="小结-1"><a href="#小结-1" class="headerlink" title="小结"></a>小结</h6><p>==这里的验证，是对类的元数据方面的，关注的是有没有违反Java语言规范==。</p>
+<h5 id="字节码验证"><a href="#字节码验证" class="headerlink" title="字节码验证"></a>字节码验证</h5><h6 id="目的-1"><a href="#目的-1" class="headerlink" title="目的"></a>目的</h6><p>通过数据流和控制流分析，确定程序语意是合法的。</p>
+<h6 id="途径"><a href="#途径" class="headerlink" title="途径"></a>途径</h6><p>分析、检验方法体，保证没有“非法”的操作，例如：</p>
+<ul>
+<li>保证操作数栈的数据类型和字节码能配合工作</li>
+<li>保证跳转指令不会跳转到方法体以外的字节码指令上</li>
+<li>保证方法体的类型转换是合法的</li>
+<li>….</li>
+</ul>
+<h6 id="实现-2"><a href="#实现-2" class="headerlink" title="实现"></a>实现</h6><p>由于这部分非常复杂，HotSpot对此做了优化：</p>
+<ul>
+<li>JDK 1.6之后给方法体的Code属性的属性表上加上<code>StackMapTable</code>属性，这项属性描述了方法体的所有基本块（Basic Block，按照控制流拆分的代码块）开始时本地变量表和操作数栈应有的状态。于是，在字节码验证期间，就不需要根据程序推导这些状态的合法性，只需要检查<code>StackMapTable</code>属性中的记录即可。总结为一句话：将字节码的检验从推导变为类型检查。</li>
+<li>可以使用 <code>-XX:-UseSplitVerify</code> 选项来关闭这个优化，或者使用参数 <code>-XX:+FailOverToOldVerify</code>在类型检查失败时，退回到类型推导进行检验。</li>
+<li>在JDK 1.7 之后，对于主版本 &gt; 50 的 class文件，强制使用类型检查，不运行使用类型推导。</li>
+</ul>
+<p>相关代码看到<code>instanceKlass::verify_code</code>，它调用了<code>Verifier</code>模块的<code>verify</code>方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">bool Verifier::verify(instanceKlassHandle klass, Verifier::Mode mode, bool should_verify_class, TRAPS) &#123;</span><br><span class="line"></span><br><span class="line">    // If the class should be verified, first see if we can use the split</span><br><span class="line">    // verifier.  If not, or if verification fails and FailOverToOldVerifier</span><br><span class="line">    // is set, then call the inference verifier.</span><br><span class="line">    if (is_eligible_for_verification(klass, should_verify_class)) &#123;</span><br><span class="line">     </span><br><span class="line">        if (UseSplitVerifier &amp;&amp;</span><br><span class="line">            klass-&gt;major_version() &gt;= STACKMAP_ATTRIBUTE_MAJOR_VERSION) &#123;</span><br><span class="line">            </span><br><span class="line">            ClassVerifier split_verifier(klass, message_buffer, message_buffer_len, THREAD);</span><br><span class="line">            split_verifier.verify_class(THREAD);</span><br><span class="line">            exception_name = split_verifier.result();</span><br><span class="line">          </span><br><span class="line">            if (klass-&gt;major_version() &lt; NOFAILOVER_MAJOR_VERSION &amp;&amp;</span><br><span class="line">                FailOverToOldVerifier &amp;&amp; !HAS_PENDING_EXCEPTION &amp;&amp;</span><br><span class="line">                (exception_name == vmSymbols::java_lang_VerifyError() ||</span><br><span class="line">                exception_name == vmSymbols::java_lang_ClassFormatError())) &#123;</span><br><span class="line">                </span><br><span class="line">                exception_name = inference_verify(</span><br><span class="line">                    klass, message_buffer, message_buffer_len, THREAD);</span><br><span class="line">           &#125;</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            exception_name = inference_verify(</span><br><span class="line">            klass, message_buffer, message_buffer_len, THREAD);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // 异常处理及返回， 省略</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h5 id="符号引用验证"><a href="#符号引用验证" class="headerlink" title="符号引用验证"></a>符号引用验证</h5><p>这个阶段的验证发生在解析阶段，用于检验对类自身以外（常量池中的各个符号引用）的信息进行匹配性校验，如：</p>
+<ul>
+<li>符号引用中通过字符串描述的权限定名是否能找到对应的类</li>
+<li>在指定类中是否存在符合方法描述符以及简单名称所描述的方法和字段</li>
+<li>….</li>
+</ul>
+<h6 id="目的-2"><a href="#目的-2" class="headerlink" title="目的"></a>目的</h6><p>确保解析动作能正常执行。</p>
+<h6 id="实现-3"><a href="#实现-3" class="headerlink" title="实现"></a>实现</h6><p>在解析的实现中找。</p>
+<h4 id="准备"><a href="#准备" class="headerlink" title="准备"></a>准备</h4><ul>
+<li>为类静态变量分配内存并设置类静态变量初始值的阶段，这些变量都在方法区中进行分配。</li>
+<li>对类静态变量初始化（使用“零值”）</li>
+<li>不会执行任何字节码，包括类变量显式的初始化赋值语句</li>
+<li>对于定义为<code>final</code>的类静态变量，javac会为这个字段生成<code>ConstantValue</code>属性，这此阶段会直接使用<code>ConstantValue</code>属性指定的值。</li>
+</ul>
+<h5 id="实现-4"><a href="#实现-4" class="headerlink" title="实现"></a>实现</h5><p>在Loaading的时候（<code>parseClassFile</code>方法）中：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">// ....</span><br><span class="line"></span><br><span class="line">// check that if this class is an interface then it doesn&apos;t have static methods</span><br><span class="line">if (this_klass-&gt;is_interface()) &#123;</span><br><span class="line">  check_illegal_static_method(this_klass, CHECK_(nullHandle));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// Allocate mirror and initialize static fields</span><br><span class="line">java_lang_Class::create_mirror(this_klass, CHECK_(nullHandle));</span><br></pre></td></tr></table></figure></p>
+<p>在解析字节流的时候，当部分验证完成后，调用方法<code>create_mirror</code>。它的执行过程主要关注下面2个方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br></pre></td><td class="code"><pre><span class="line">void instanceKlass::do_local_static_fields_impl(instanceKlassHandle this_oop, void f(fieldDescriptor* fd, TRAPS), TRAPS) &#123;</span><br><span class="line">  for (JavaFieldStream fs(this_oop()); !fs.done(); fs.next()) &#123;</span><br><span class="line">    if (fs.access_flags().is_static()) &#123;</span><br><span class="line">      fieldDescriptor fd;</span><br><span class="line">      fd.initialize(this_oop(), fs.index());</span><br><span class="line">      f(&amp;fd, CHECK);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">static void initialize_static_field(fieldDescriptor* fd, TRAPS) &#123;</span><br><span class="line">  Handle mirror (THREAD, fd-&gt;field_holder()-&gt;java_mirror());</span><br><span class="line">  assert(mirror.not_null() &amp;&amp; fd-&gt;is_static(), &quot;just checking&quot;);</span><br><span class="line">  if (fd-&gt;has_initial_value()) &#123;</span><br><span class="line">    BasicType t = fd-&gt;field_type();</span><br><span class="line">    switch (t) &#123;</span><br><span class="line">      case T_BYTE:</span><br><span class="line">        mirror()-&gt;byte_field_put(fd-&gt;offset(), fd-&gt;int_initial_value());</span><br><span class="line">              break;</span><br><span class="line">      case T_BOOLEAN:</span><br><span class="line">        mirror()-&gt;bool_field_put(fd-&gt;offset(), fd-&gt;int_initial_value());</span><br><span class="line">              break;</span><br><span class="line">      case T_CHAR:</span><br><span class="line">        mirror()-&gt;char_field_put(fd-&gt;offset(), fd-&gt;int_initial_value());</span><br><span class="line">              break;</span><br><span class="line">      case T_SHORT:</span><br><span class="line">        mirror()-&gt;short_field_put(fd-&gt;offset(), fd-&gt;int_initial_value());</span><br><span class="line">              break;</span><br><span class="line">      case T_INT:</span><br><span class="line">        mirror()-&gt;int_field_put(fd-&gt;offset(), fd-&gt;int_initial_value());</span><br><span class="line">        break;</span><br><span class="line">      case T_FLOAT:</span><br><span class="line">        mirror()-&gt;float_field_put(fd-&gt;offset(), fd-&gt;float_initial_value());</span><br><span class="line">        break;</span><br><span class="line">      case T_DOUBLE:</span><br><span class="line">        mirror()-&gt;double_field_put(fd-&gt;offset(), fd-&gt;double_initial_value());</span><br><span class="line">        break;</span><br><span class="line">      case T_LONG:</span><br><span class="line">        mirror()-&gt;long_field_put(fd-&gt;offset(), fd-&gt;long_initial_value());</span><br><span class="line">        break;</span><br><span class="line">      case T_OBJECT:</span><br><span class="line">        &#123;</span><br><span class="line">          oop string = fd-&gt;string_initial_value(CHECK);</span><br><span class="line">          mirror()-&gt;obj_field_put(fd-&gt;offset(), string);</span><br><span class="line">        &#125;</span><br><span class="line">        break;</span><br><span class="line">      default:</span><br><span class="line">        THROW_MSG(vmSymbols::java_lang_ClassFormatError(),</span><br><span class="line">                  &quot;Illegal ConstantValue attribute in class file&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>简单来说，就是通过<code>JavaFieldStream</code>遍历这个类的字段，遇到静态的，调用<code>initialize_static_field</code>方法，将初始值赋值到相应的Java对象。</p>
+<h4 id="三-解析"><a href="#三-解析" class="headerlink" title="三. 解析"></a>三. 解析</h4><p>待补充。</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/JVM/" rel="tag"># JVM</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/06/09/JVM_Class_Loading_Loading/" rel="next" title="HotSpot的类加载--Loading">
+                <i class="fa fa-chevron-left"></i> HotSpot的类加载--Loading
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/06/11/JVM_Class_Loading_Initialization/" rel="prev" title="HotSpot的类加载--Initialization">
+                HotSpot的类加载--Initialization <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">62</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">6</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">8</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#链接（Linking）"><span class="nav-number">1.</span> <span class="nav-text">链接（Linking）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#验证"><span class="nav-number">1.1.</span> <span class="nav-text">验证</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#目的"><span class="nav-number">1.1.1.</span> <span class="nav-text">目的</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#步骤"><span class="nav-number">1.1.2.</span> <span class="nav-text">步骤</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#文件格式验证"><span class="nav-number">1.1.3.</span> <span class="nav-text">文件格式验证</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#实现"><span class="nav-number">1.1.3.1.</span> <span class="nav-text">实现</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#小结"><span class="nav-number">1.1.3.2.</span> <span class="nav-text">小结</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#元数据验证"><span class="nav-number">1.1.4.</span> <span class="nav-text">元数据验证</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#实现-1"><span class="nav-number">1.1.4.1.</span> <span class="nav-text">实现</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#小结-1"><span class="nav-number">1.1.4.2.</span> <span class="nav-text">小结</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#字节码验证"><span class="nav-number">1.1.5.</span> <span class="nav-text">字节码验证</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#目的-1"><span class="nav-number">1.1.5.1.</span> <span class="nav-text">目的</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#途径"><span class="nav-number">1.1.5.2.</span> <span class="nav-text">途径</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#实现-2"><span class="nav-number">1.1.5.3.</span> <span class="nav-text">实现</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#符号引用验证"><span class="nav-number">1.1.6.</span> <span class="nav-text">符号引用验证</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#目的-2"><span class="nav-number">1.1.6.1.</span> <span class="nav-text">目的</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#实现-3"><span class="nav-number">1.1.6.2.</span> <span class="nav-text">实现</span></a></li></ol></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#准备"><span class="nav-number">1.2.</span> <span class="nav-text">准备</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#实现-4"><span class="nav-number">1.2.1.</span> <span class="nav-text">实现</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#三-解析"><span class="nav-number">1.3.</span> <span class="nav-text">三. 解析</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

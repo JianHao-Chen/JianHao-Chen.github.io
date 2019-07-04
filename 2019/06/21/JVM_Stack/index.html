@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="本文主要内容：  栈的基础知识 栈的实现： 栈的结构 方法调用的过程 对栈帧内容读写">
+<meta name="keywords" content="JVM">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HotSpot栈的实现">
+<meta property="og:url" content="http://yoursite.com/2019/06/21/JVM_Stack/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="本文主要内容：  栈的基础知识 栈的实现： 栈的结构 方法调用的过程 对栈帧内容读写">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/Stack/1.png">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/Stack/2.png">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/Stack/3.png">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/Stack/4.png">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/Stack/5.png">
+<meta property="og:updated_time" content="2019-07-04T10:34:21.037Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="HotSpot栈的实现">
+<meta name="twitter:description" content="本文主要内容：  栈的基础知识 栈的实现： 栈的结构 方法调用的过程 对栈帧内容读写">
+<meta name="twitter:image" content="http://yoursite.com/assets/blogImg/JVM/Stack/1.png">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2019/06/21/JVM_Stack/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>HotSpot栈的实现 | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/06/21/JVM_Stack/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">HotSpot栈的实现
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-06-21 08:55:00" itemprop="dateCreated datePublished" datetime="2019-06-21T08:55:00+08:00">2019-06-21</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-07-04 18:34:21" itemprop="dateModified" datetime="2019-07-04T18:34:21+08:00">2019-07-04</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/JVM/" itemprop="url" rel="index"><span itemprop="name">JVM</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>本文主要内容：</p>
+<ul>
+<li>栈的基础知识</li>
+<li>栈的实现：<ul>
+<li>栈的结构</li>
+<li>方法调用的过程</li>
+<li>对栈帧内容读写</li>
+</ul>
+</li>
+</ul>
+<a id="more"></a>
+<h3 id="HotSpot的栈的基础"><a href="#HotSpot的栈的基础" class="headerlink" title="HotSpot的栈的基础"></a>HotSpot的栈的基础</h3><ul>
+<li>每启动一个Java线程，实际上是与内核线程一一对应的，因此HotSpot的栈是取决于系统实现。下面的分析都默认 x86,Linux 平台。</li>
+<li>当线程调用一个Java方法时，JVM（具体看到<code>CallStub</code>相关）会在这个线程的栈中压入一个帧（称为当前帧）。</li>
+<li>栈帧（stack frame）<ul>
+<li>作用：支持虚拟机进行方法调用、方法执行</li>
+<li>包含：局部变量表、操作数栈、动态连接、方法返回地址等</li>
+</ul>
+</li>
+<li>对于活动线程，只有栈顶栈帧是有效的，执行引擎所运行的字节码指令都是只针对当前栈帧进行操作的。</li>
+</ul>
+<h4 id="栈帧"><a href="#栈帧" class="headerlink" title="栈帧"></a>栈帧</h4><ul>
+<li>HotSpot没有区分Java方法帧和本地方法帧。</li>
+<li>Java方法帧可以是解释的，也可以是编译的。</li>
+</ul>
+<h4 id="局部变量表"><a href="#局部变量表" class="headerlink" title="局部变量表"></a>局部变量表</h4><ul>
+<li>定义：是一组变量值存储空间，用于存放方法参数和方法内部定义的局部变量。</li>
+<li>特点：<ul>
+<li>以变量槽(Slot)为最小单位–32位虚拟机的一个Slot可以存放一个32位的数据类型。</li>
+<li>局部变量表的容量，由Class文件的方法的Code属性的 max_locals 决定。</li>
+<li>对于实例方法（非static）的调用传参，第0个Slot用于传递方法所属对象实例的引用，即Java方法里面使用的 this。</li>
+<li>Slot可以重用，当Slot中的变量超出作用域，下一次分配Slot时，会覆盖原数据。</li>
+<li>Slot对对象的引用，会影响到GC。</li>
+<li>不会为局部变量赋初值。</li>
+</ul>
+</li>
+</ul>
+<h4 id="操作数栈"><a href="#操作数栈" class="headerlink" title="操作数栈"></a>操作数栈</h4><ul>
+<li>定义：Java虚拟机的解释执行引擎被称为基于栈的执行引擎，其中的栈就是操作数栈。操作数栈又叫操作栈，或表达式栈（expression stack）。</li>
+<li>特点：<ul>
+<li>操作数栈的深度在编译期决定（Code属性的 max_stacks）。</li>
+<li>它作为虚拟机计算时临时数据的存储区域</li>
+</ul>
+</li>
+</ul>
+<h4 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h4><p>除了局部变量表、操作数栈之外，栈帧还包含如下数据：</p>
+<ul>
+<li>指向常量池的指针</li>
+<li>返回值（将返回值压入发起调用方法的栈）</li>
+<li>对方法异常表的引用</li>
+</ul>
+<h3 id="HotSpot栈帧的实现"><a href="#HotSpot栈帧的实现" class="headerlink" title="HotSpot栈帧的实现"></a>HotSpot栈帧的实现</h3><p>HotSpot的栈帧相关类图如下：</p>
+<p><img src="/assets/blogImg/JVM/Stack/1.png" width="400"></p>
+<h4 id="涉及的类的介绍"><a href="#涉及的类的介绍" class="headerlink" title="涉及的类的介绍"></a>涉及的类的介绍</h4><h5 id="vframe"><a href="#vframe" class="headerlink" title="vframe"></a>vframe</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">class vframe: public ResourceObj &#123;</span><br><span class="line">  protected:</span><br><span class="line">    frame        _fr;      // Raw frame behind the virtual frame.</span><br><span class="line">    RegisterMap  _reg_map; // Register map for the raw frame (used to handle callee-saved registers).</span><br><span class="line">    JavaThread*  _thread;  // The thread owning the raw frame.</span><br><span class="line">  public:</span><br><span class="line">    // Factory method for creating vframes</span><br><span class="line">    static vframe* new_vframe(const frame* f, const RegisterMap *reg_map, JavaThread* thread);    </span><br><span class="line">    </span><br><span class="line">    // Accessors</span><br><span class="line">  frame              fr()           const &#123; return _fr;       &#125;</span><br><span class="line">  CodeBlob*          cb()         const &#123; return _fr.cb();  &#125;</span><br><span class="line">  nmethod*           nm()         const &#123;</span><br><span class="line">      assert( cb() != NULL &amp;&amp; cb()-&gt;is_nmethod(), &quot;usage&quot;);</span><br><span class="line">      return (nmethod*) cb();</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  // Returns the sender vframe</span><br><span class="line">  virtual vframe* sender() const;</span><br><span class="line">  </span><br><span class="line">  // Returns the next javaVFrame on the stack (skipping all other kinds of frame)</span><br><span class="line">  javaVFrame *java_sender() const;</span><br><span class="line">  </span><br><span class="line">  // Answers if the this is the top vframe in the frame, i.e., if the sender vframe</span><br><span class="line">  // is in the caller frame</span><br><span class="line">  virtual bool is_top() const &#123; return true; &#125;</span><br><span class="line"></span><br><span class="line">  // Returns top vframe within same frame (see is_top())</span><br><span class="line">  virtual vframe* top() const;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>vframe表示的是虚拟机层面的栈帧，它的作用是：</p>
+<ul>
+<li>定义了相关的成员变量、方法</li>
+<li>封装了<code>frame</code>（这个是物理栈帧在HotSpot的表示）</li>
+</ul>
+<h5 id="javaVFrame"><a href="#javaVFrame" class="headerlink" title="javaVFrame"></a>javaVFrame</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">class javaVFrame: public vframe &#123;</span><br><span class="line">  public:</span><br><span class="line">    // JVM state</span><br><span class="line">    virtual methodOop                    method()         const = 0;</span><br><span class="line">    virtual int                          bci()            const = 0;</span><br><span class="line">    virtual StackValueCollection*        locals()         const = 0;</span><br><span class="line">    virtual StackValueCollection*        expressions()    const = 0;</span><br><span class="line">    // the order returned by monitors() is from oldest -&gt; youngest#4418568</span><br><span class="line">    virtual GrowableArray&lt;MonitorInfo*&gt;* monitors()       const = 0;</span><br><span class="line">    // ... 省略</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>javaVFrame表示的是Java层面的栈帧。</p>
+<h5 id="frame"><a href="#frame" class="headerlink" title="frame"></a>frame</h5><p><strong>frame</strong>的定义如下，省略部分代码：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br></pre></td><td class="code"><pre><span class="line">class frame VALUE_OBJ_CLASS_SPEC &#123;</span><br><span class="line">  private:</span><br><span class="line">    intptr_t* _sp; // stack pointer (from Thread::last_Java_sp)</span><br><span class="line">    address   _pc; // program counter (the next instruction after the call)</span><br><span class="line">    </span><br><span class="line">    CodeBlob* _cb; // CodeBlob that &quot;owns&quot; pc</span><br><span class="line"> </span><br><span class="line">  public:</span><br><span class="line">  </span><br><span class="line">    // returns the frame size in stack slots</span><br><span class="line">    int frame_size(RegisterMap* map) const;</span><br><span class="line">    </span><br><span class="line">    // returns the sending frame</span><br><span class="line">    frame sender(RegisterMap* map) const;</span><br><span class="line">  </span><br><span class="line">  </span><br><span class="line">    // All frames:</span><br><span class="line">    </span><br><span class="line">    // A low-level interface for vframes:</span><br><span class="line">    </span><br><span class="line">    intptr_t* addr_at(int index) const             &#123; return &amp;fp()[index];    &#125;</span><br><span class="line">    intptr_t  at(int index) const                  &#123; return *addr_at(index); &#125;</span><br><span class="line">    </span><br><span class="line">     // accessors for locals</span><br><span class="line">    oop obj_at(int offset) const                   &#123; return *obj_at_addr(offset);  &#125;</span><br><span class="line">    void obj_at_put(int offset, oop value)         &#123; *obj_at_addr(offset) = value; &#125;</span><br><span class="line">  </span><br><span class="line">    // Return address</span><br><span class="line">    address  sender_pc() const;</span><br><span class="line">    </span><br><span class="line">    // returns the stack pointer of the calling frame</span><br><span class="line">    intptr_t* sender_sp() const;</span><br><span class="line">    </span><br><span class="line">    </span><br><span class="line">    /**</span><br><span class="line">    * ----------- Interpreter frames:  </span><br><span class="line">    */</span><br><span class="line">    </span><br><span class="line">    // Locals</span><br><span class="line">    // The _at version returns a pointer because the address is used for GC.</span><br><span class="line">    intptr_t* interpreter_frame_local_at(int index) const;</span><br><span class="line"></span><br><span class="line">    void interpreter_frame_set_locals(intptr_t* locs);</span><br><span class="line">    </span><br><span class="line">    // byte code index</span><br><span class="line">    jint interpreter_frame_bci() const;</span><br><span class="line">    void interpreter_frame_set_bci(jint bci);</span><br><span class="line">    </span><br><span class="line">    // byte code pointer</span><br><span class="line">    address interpreter_frame_bcp() const;</span><br><span class="line">    void    interpreter_frame_set_bcp(address bcp);</span><br><span class="line">    </span><br><span class="line">    // method data pointer</span><br><span class="line">    address interpreter_frame_mdp() const;</span><br><span class="line">    void    interpreter_frame_set_mdp(address dp);</span><br><span class="line">    </span><br><span class="line">    // expression stack (may go up or down, direction == 1 or -1)</span><br><span class="line">    intptr_t* interpreter_frame_expression_stack() const;</span><br><span class="line">    static  jint  interpreter_frame_expression_stack_direction();</span><br><span class="line">    </span><br><span class="line">    // The _at version returns a pointer because the address is used for GC.</span><br><span class="line">    intptr_t* interpreter_frame_expression_stack_at(jint offset) const;</span><br><span class="line">    </span><br><span class="line">    // top of expression stack</span><br><span class="line">    intptr_t* interpreter_frame_tos_at(jint offset) const;</span><br><span class="line">    intptr_t* interpreter_frame_tos_address() const;</span><br><span class="line">    </span><br><span class="line">    jint  interpreter_frame_expression_stack_size() const;</span><br><span class="line">    intptr_t* interpreter_frame_sender_sp() const;</span><br><span class="line">    </span><br><span class="line"></span><br><span class="line">    // BasicObjectLocks:</span><br><span class="line">    // ... 省略</span><br><span class="line">    </span><br><span class="line">    // Method &amp; constant pool cache</span><br><span class="line">    methodOop interpreter_frame_method() const;</span><br><span class="line">    void interpreter_frame_set_method(methodOop method);</span><br><span class="line">    methodOop* interpreter_frame_method_addr() const;</span><br><span class="line">    constantPoolCacheOop* interpreter_frame_cache_addr() const;</span><br><span class="line">  </span><br><span class="line">    // Entry frames</span><br><span class="line">    JavaCallWrapper* entry_frame_call_wrapper() const;</span><br><span class="line">    intptr_t* entry_frame_argument_at(int offset) const;</span><br><span class="line">    </span><br><span class="line">    </span><br><span class="line">    /**</span><br><span class="line">    * ----------- Compiled frames:  </span><br><span class="line">    */</span><br><span class="line">    // ... 省略</span><br><span class="line">    </span><br><span class="line"></span><br><span class="line">#ifdef TARGET_ARCH_x86</span><br><span class="line"># include &quot;frame_x86.hpp&quot;</span><br><span class="line">#endif</span><br><span class="line">#ifdef TARGET_ARCH_sparc</span><br><span class="line"># include &quot;frame_sparc.hpp&quot;</span><br><span class="line">#endif</span><br><span class="line">#ifdef TARGET_ARCH_zero</span><br><span class="line"># include &quot;frame_zero.hpp&quot;</span><br><span class="line">#endif</span><br><span class="line">#ifdef TARGET_ARCH_arm</span><br><span class="line"># include &quot;frame_arm.hpp&quot;</span><br><span class="line">#endif</span><br><span class="line">#ifdef TARGET_ARCH_ppc</span><br><span class="line"># include &quot;frame_ppc.hpp&quot;</span><br><span class="line">#endif    </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>由于栈帧是基于系统实现的，所以可以看到<code>frame</code>类通过包含头文件的方式，将平台相关的代码引入。</p>
+<p>而<code>frame</code>类定义了栈帧中平台无关的代码：</p>
+<ul>
+<li>成员变量如：栈指针、返回地址</li>
+<li>方法如：<ul>
+<li>读写局部变量表</li>
+<li>获取返回地址</li>
+<li>获取调用当前方法的方法的栈指针</li>
+<li>读写字节码索引/指针</li>
+<li>获取操作数栈的大小、顶部元素</li>
+<li>偏向锁相关</li>
+</ul>
+</li>
+</ul>
+<h5 id="frame-x86"><a href="#frame-x86" class="headerlink" title="frame_x86"></a>frame_x86</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line">public:</span><br><span class="line"></span><br><span class="line">  enum &#123;</span><br><span class="line">    pc_return_offset                                 =  0,</span><br><span class="line">    // All frames</span><br><span class="line">    link_offset                                      =  0,</span><br><span class="line">    return_addr_offset                               =  1,</span><br><span class="line">    // non-interpreter frames</span><br><span class="line">    sender_sp_offset                                 =  2,</span><br><span class="line">    </span><br><span class="line">#ifndef CC_INTERP</span><br><span class="line"></span><br><span class="line">    // Interpreter frames</span><br><span class="line">    interpreter_frame_result_handler_offset          =  3, // for native calls only</span><br><span class="line">    interpreter_frame_oop_temp_offset                =  2, // for native calls only</span><br><span class="line"></span><br><span class="line">    interpreter_frame_sender_sp_offset               = -1,</span><br><span class="line">    // outgoing sp before a call to an invoked method</span><br><span class="line">    interpreter_frame_last_sp_offset                 = interpreter_frame_sender_sp_offset - 1,</span><br><span class="line">    interpreter_frame_method_offset                  = interpreter_frame_last_sp_offset - 1,</span><br><span class="line">    interpreter_frame_mdx_offset                     = interpreter_frame_method_offset - 1,</span><br><span class="line">    interpreter_frame_cache_offset                   = interpreter_frame_mdx_offset - 1,</span><br><span class="line">    interpreter_frame_locals_offset                  = interpreter_frame_cache_offset - 1,</span><br><span class="line">    interpreter_frame_bcx_offset                     = interpreter_frame_locals_offset - 1,</span><br><span class="line">    interpreter_frame_initial_sp_offset              = interpreter_frame_bcx_offset - 1,</span><br><span class="line"></span><br><span class="line">    interpreter_frame_monitor_block_top_offset       = interpreter_frame_initial_sp_offset,</span><br><span class="line">    interpreter_frame_monitor_block_bottom_offset    = interpreter_frame_initial_sp_offset,</span><br><span class="line">#endif // CC_INTERP</span><br><span class="line"></span><br><span class="line">  // ... 省略</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line">private:</span><br><span class="line">  // an additional field beyond _sp and _pc:</span><br><span class="line">  intptr_t*   _fp; // frame pointer</span><br><span class="line">  </span><br><span class="line">  intptr_t* ptr_at_addr(int offset) const &#123;</span><br><span class="line">    return (intptr_t*) addr_at(offset);</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  // Constructors</span><br><span class="line">  frame(intptr_t* sp, intptr_t* fp, address pc);</span><br><span class="line">  </span><br><span class="line">  // accessors for the instance variables</span><br><span class="line">  intptr_t*   fp() const &#123; return _fp; &#125;</span><br><span class="line">  </span><br><span class="line">  inline address* sender_pc_addr() const;</span><br><span class="line">  </span><br><span class="line">  // ... 省略</span><br></pre></td></tr></table></figure>
+<p>这里定义了x86平台下栈帧的实现：</p>
+<ul>
+<li>定义的enum描述的是栈帧内各个元素的相对位置</li>
+<li>定义了成员变量：帧指针</li>
+</ul>
+<h4 id="Java方法的调用过程"><a href="#Java方法的调用过程" class="headerlink" title="Java方法的调用过程"></a>Java方法的调用过程</h4><p>在HotSpot，JVM调用Java函数是通过 <strong>JavaCalls</strong> 模块完成的：由 <strong>JavaCalls</strong> 模块创建栈帧，保存调用者的帧指针。</p>
+<h5 id="JavaCalls"><a href="#JavaCalls" class="headerlink" title="JavaCalls"></a>JavaCalls</h5><p>JavaCalls 按照调用类型的不同实现了多个调用接口：call_special、call_virtual、call_static，它们都调用低层接口 call。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">void JavaCalls::call(JavaValue* result, methodHandle method, JavaCallArguments* args, TRAPS) &#123;</span><br><span class="line">  // Check if we need to wrap a potential OS exception handler around thread</span><br><span class="line">  // This is used for e.g. Win32 structured exception handlers</span><br><span class="line">  assert(THREAD-&gt;is_Java_thread(), &quot;only JavaThreads can make JavaCalls&quot;);</span><br><span class="line">  // Need to wrap each and everytime, since there might be native code down the</span><br><span class="line">  // stack that has installed its own exception handlers</span><br><span class="line">  os::os_exception_wrapper(call_helper, result, &amp;method, args, THREAD);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>低层接口 call 又通过<code>call_helper</code>函数（封装异常处理的函数）完成方法的调用：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">// do call</span><br><span class="line">&#123; JavaCallWrapper link(method, receiver, result, CHECK);</span><br><span class="line">  &#123; HandleMark hm(thread);  // HandleMark used by HandleMarkCleaner</span><br><span class="line"></span><br><span class="line">    StubRoutines::call_stub()(</span><br><span class="line">      (address)&amp;link,</span><br><span class="line">      // (intptr_t*)&amp;(result-&gt;_value), // see NOTE above (compiler problem)</span><br><span class="line">      result_val_address,          // see NOTE above (compiler problem)</span><br><span class="line">      result_type,</span><br><span class="line">      method(),</span><br><span class="line">      entry_point,</span><br><span class="line">      args-&gt;parameters(),</span><br><span class="line">      args-&gt;size_of_parameters(),</span><br><span class="line">      CHECK</span><br><span class="line">    );</span><br><span class="line"></span><br><span class="line">    result = link.result();  // circumvent MS C++ 5.0 compiler bug (result is clobbered across call)</span><br><span class="line">    // Preserve oop return value across possible gc points</span><br><span class="line">    if (oop_result_flag) &#123;</span><br><span class="line">      thread-&gt;set_vm_result((oop) result-&gt;get_jobject());</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125; // Exit JavaCallWrapper (can block - potential return oop must bereserved)</span><br></pre></td></tr></table></figure></p>
+<p>在讲解上面的代码之前，需要先补充一些知识。</p>
+<h5 id="StubRountines"><a href="#StubRountines" class="headerlink" title="StubRountines"></a>StubRountines</h5><p><strong>Rountine</strong> 是在HotSpot里面被共享并频繁调用的例程，每一个例程就是虚拟机中某些基本操作的可以被单独调用的程序片段。</p>
+<p>上面代码的<code>call_stub</code>就是其中一个例程，用于从C调用Java代码。</p>
+<p>而这些例程会在JVM启动时初始化，简单描述流程是：</p>
+<ol>
+<li>入口是<code>init_globals()</code>方法，它分别调用<code>stubRoutines_init1()</code>和<code>stubRoutines_init2()</code>方法，这2个方法的区别是一个仅生成初始化例程，另一个生成所有例程。</li>
+<li>以<code>stubRoutines_init1()</code>为例，它调用了<code>StubGenerator</code>的<code>generate_initial</code>方法,而我们关心的 <strong>call_stub</strong> 就在这里被创建。</li>
+</ol>
+<p>实际上，这些例程是平台相关的，我们接下来分析的 <strong>call_stub</strong>，它创建的函数是在 <em>stubGenerator_x86_32.cpp</em> 里面。</p>
+<h5 id="call-stub"><a href="#call-stub" class="headerlink" title="call_stub"></a>call_stub</h5><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br></pre></td><td class="code"><pre><span class="line">address generate_call_stub(address&amp; return_address) &#123;</span><br><span class="line"></span><br><span class="line">  // （1） 记录 PC 寄存器</span><br><span class="line">  address start = __ pc();</span><br><span class="line">  </span><br><span class="line">  // （2）创建局部变量保存信息</span><br><span class="line">  const Address rsp_after_call(rbp, -4 * wordSize);     // 上一栈帧基址</span><br><span class="line">  const int     locals_count_in_bytes  (4*wordSize);    // </span><br><span class="line">  const Address mxcsr_save    (rbp, -4 * wordSize);     // 保存mxcsr的值</span><br><span class="line">  const Address saved_rbx     (rbp, -3 * wordSize);     // 保存rbx的值</span><br><span class="line">  const Address saved_rsi     (rbp, -2 * wordSize);     // 保存rsi的值</span><br><span class="line">  const Address saved_rdi     (rbp, -1 * wordSize);     // 保存rdi的值</span><br><span class="line">  const Address result        (rbp,  3 * wordSize);     // Java方法的返回值</span><br><span class="line">  const Address result_type   (rbp,  4 * wordSize);     // 返回值的类型</span><br><span class="line">  const Address method        (rbp,  5 * wordSize);     // Java方法的Oop</span><br><span class="line">  const Address entry_point   (rbp,  6 * wordSize);     // Java方法的入口</span><br><span class="line">  const Address parameters    (rbp,  7 * wordSize);     // 调用Java方法的参数</span><br><span class="line">  const Address parameter_size(rbp,  8 * wordSize);     // 参数的数目</span><br><span class="line">  const Address thread        (rbp,  9 * wordSize);     // 线程</span><br><span class="line">  </span><br><span class="line">  // （3）进入新的栈帧，通过2条指令：  push(rbp);  mov(rbp, rsp);</span><br><span class="line">  __ enter();         </span><br><span class="line">  </span><br><span class="line">  // （4）计算为参数和寄存器保存需要的空间，并移动栈指针 rsp跳过这段预留空间</span><br><span class="line">  __ movptr(rcx, parameter_size);              // parameter counter</span><br><span class="line">  __ shlptr(rcx, Interpreter::logStackElementSize); // convert parameter count to bytes</span><br><span class="line">  __ addptr(rcx, locals_count_in_bytes);       // reserve space for register saves</span><br><span class="line">  __ subptr(rsp, rcx);</span><br><span class="line">  __ andptr(rsp, -(StackAlignmentInBytes));    // Align stack</span><br><span class="line">  </span><br><span class="line">  // （5）保存寄存器 rdi, rsi, rbx, 这3个是被调用者保存寄存器，所以由本方法保存</span><br><span class="line">  __ movptr(saved_rdi, rdi);</span><br><span class="line">  __ movptr(saved_rsi, rsi);</span><br><span class="line">  __ movptr(saved_rbx, rbx);</span><br><span class="line">  </span><br><span class="line">  // （6）按参数出现顺序复制参数</span><br><span class="line">  //  ... 省略</span><br><span class="line">  </span><br><span class="line">  // （7）调用Java方法：</span><br><span class="line">  //  将 Java方法的入口地址放到 rax寄存器，然后调用 call(rax)完成方法跳转</span><br><span class="line">  __ BIND(parameters_done);</span><br><span class="line">  __ movptr(rbx, method);           // get methodOop</span><br><span class="line">  __ movptr(rax, entry_point);      // get entry_point</span><br><span class="line">  __ mov(rsi, rsp);                 // set sender sp</span><br><span class="line">  BLOCK_COMMENT(&quot;call Java function&quot;);</span><br><span class="line">  __ call(rax);</span><br><span class="line">  </span><br><span class="line">  //（8）保存返回结果</span><br><span class="line">  // 如果返回结果的类型是 long、float、double，则跳转到相应的 label</span><br><span class="line">  __ movptr(rdi, result);</span><br><span class="line">  Label is_long, is_float, is_double, exit;</span><br><span class="line">  __ movl(rsi, result_type);</span><br><span class="line">  __ cmpl(rsi, T_LONG);</span><br><span class="line">  __ jcc(Assembler::equal, is_long);</span><br><span class="line">  __ cmpl(rsi, T_FLOAT);</span><br><span class="line">  __ jcc(Assembler::equal, is_float);</span><br><span class="line">  __ cmpl(rsi, T_DOUBLE);</span><br><span class="line">  __ jcc(Assembler::equal, is_double);</span><br><span class="line">  </span><br><span class="line">  // （8.1）handle T_INT case（返回结果保存在 rax）</span><br><span class="line">  __ movl(Address(rdi, 0), rax);</span><br><span class="line">  // （8.2）相当于设置了一个 exit 的 lable</span><br><span class="line">  __ BIND(exit);</span><br><span class="line">  </span><br><span class="line">  // （9）弹出参数</span><br><span class="line">  //  rsp_after_call 保存的是上一栈帧的基址， lea 指令将这个值赋给 rsp</span><br><span class="line">  __ lea(rsp, rsp_after_call);</span><br><span class="line">  </span><br><span class="line">  // （10）恢复 rdi， rsi ，rbx 寄存器</span><br><span class="line">  __ movptr(rbx, saved_rbx);</span><br><span class="line">  __ movptr(rsi, saved_rsi);</span><br><span class="line">  __ movptr(rdi, saved_rdi);</span><br><span class="line">  __ addptr(rsp, 4*wordSize);</span><br><span class="line">  </span><br><span class="line">  </span><br><span class="line">  // (11) 恢复上一栈帧：之前 push 了 rbp（上一栈帧），</span><br><span class="line">  __ pop(rbp);</span><br><span class="line">  </span><br><span class="line">  // （12）返回</span><br><span class="line">  // ret 指令作用：从当前 %rsp 指向的位置（即栈顶）弹出数据，并跳转到此数据代表的地址处</span><br><span class="line">  // 此时栈顶数据是本方法调用后的返回地址。</span><br><span class="line">  __ ret(0);</span><br><span class="line"></span><br><span class="line">  </span><br><span class="line">  // （13）对Java方法返回结果类型为 long 、float、double的处理</span><br><span class="line">  //  ... 省略</span><br><span class="line">  </span><br><span class="line">  // 返回 start，作为这个 call_stub的地址，提供给其他模块调用</span><br><span class="line">  return start;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h5 id="补充"><a href="#补充" class="headerlink" title=" 补充"></a><font color="red"> <strong>补充</strong></font></h5><p>（1）这个例程在创建变量保存信息时，那保存的是什么呢？</p>
+<p>就是上面代码的这一句：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">StubRoutines::call_stub()(</span><br><span class="line">      (address)&amp;link,</span><br><span class="line">      // (intptr_t*)&amp;(result-&gt;_value), // see NOTE above (compiler problem)</span><br><span class="line">      result_val_address,          // see NOTE above (compiler problem)</span><br><span class="line">      result_type,</span><br><span class="line">      method(),</span><br><span class="line">      entry_point,</span><br><span class="line">      args-&gt;parameters(),</span><br><span class="line">      args-&gt;size_of_parameters(),</span><br><span class="line">      CHECK</span><br><span class="line">    );</span><br></pre></td></tr></table></figure></p>
+<p>就是<code>call_helper</code>函数调用<code>call_stub</code>时传递的这8个参数！！！</p>
+<p>（2） 画出上面CallStub的栈帧示意图：</p>
+<p><img src="/assets/blogImg/JVM/Stack/2.png" width="400"></p>
+<h5 id="方法入口（method-entry-point，这部分与解释器有关）"><a href="#方法入口（method-entry-point，这部分与解释器有关）" class="headerlink" title="方法入口（method entry point，这部分与解释器有关）"></a>方法入口（method entry point，这部分与解释器有关）</h5><ul>
+<li>真正执行Java字节码的是<strong>解释器</strong>。</li>
+<li>JVM启动时，<strong>代码生成器</strong>会为字节码、JVM内部例程生成<strong>Codelets</strong>，并存储在 <strong>CodeCache</strong> 中，以供解释器使用。</li>
+<li>解释器将 JVM执行Java方法、native方法等方法调用所需要的共同工作提取出来，封装成 <strong>方法入口</strong>，作为 <strong>Codelets</strong> 的一部分。</li>
+<li>JVM调用的方法的类型不同，对应的栈帧也不同。</li>
+<li>在<code>AbstractInterpreter</code>里面，定义了枚举类型<code>MethodKind</code>作为Hotspot内部方法类型。</li>
+<li>这些方法入口就在<code>TemplateInterpreterGenerator::generate_all()</code>里面创建的。</li>
+</ul>
+<h5 id="zerolocals-方法的栈帧结构"><a href="#zerolocals-方法的栈帧结构" class="headerlink" title="zerolocals 方法的栈帧结构"></a>zerolocals 方法的栈帧结构</h5><p>在HotSpot的方法类型中，<strong><em>zerolocals</em></strong> 表示需要初始化局部变量的方法。</p>
+<p>通过<code>AbstractInterpreterGenerator::generate_method_entry</code>方法，JVM根据方法的类型决定生成哪一种方法入口。</p>
+<p>而<strong><em>zerolocals</em></strong>的方法入口是通过<code>generate_normal_entry</code>方法生成的。我们通过这个方法，可以看出一般的Java方法执行前的栈帧结构。</p>
+<h6 id="解释器栈帧结构–CallStub方法（简化）"><a href="#解释器栈帧结构–CallStub方法（简化）" class="headerlink" title="解释器栈帧结构–CallStub方法（简化）"></a>解释器栈帧结构–CallStub方法（简化）</h6><p><img src="/assets/blogImg/JVM/Stack/3.png" width="400"></p>
+<p>开始分析<code>generate_normal_entry</code>方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line">address InterpreterGenerator::generate_normal_entry(bool synchronized) &#123;</span><br><span class="line">  // determine code generation flags</span><br><span class="line">  bool inc_counter  = UseCompiler || CountCompiledCalls;</span><br><span class="line">  </span><br><span class="line">  // rbx,: methodOop</span><br><span class="line">  // rsi: sender sp</span><br><span class="line">  // methodOop的指针保存在 rbx， sender sp 保存在 rsi，参数size保存在 rcx（这是由 CallStub做的）</span><br><span class="line">  address entry_point = __ pc();</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  const Address size_of_parameters(rbx, methodOopDesc::size_of_parameters_offset());</span><br><span class="line">  const Address size_of_locals    (rbx, methodOopDesc::size_of_locals_offset());</span><br><span class="line">  const Address invocation_counter(rbx, methodOopDesc::invocation_counter_offset() + InvocationCounter::counter_offset());</span><br><span class="line">  const Address access_flags      (rbx, methodOopDesc::access_flags_offset());</span><br><span class="line"></span><br><span class="line">  // get parameter size (always needed)</span><br><span class="line">  __ load_unsigned_short(rcx, size_of_parameters);</span><br><span class="line">  </span><br><span class="line">  // (1) 计算局部变量的大小，存储在 rdx</span><br><span class="line">  __ load_unsigned_short(rdx, size_of_locals);       // get size of locals in words</span><br><span class="line">  __ subl(rdx, rcx);                                // rdx = no. of additional locals</span><br><span class="line">  </span><br><span class="line">  // (2) 对栈空间大小进行检查，判断是否会发生栈溢出，具体实现不展开。</span><br><span class="line">  generate_stack_overflow_check();</span><br><span class="line">  </span><br><span class="line">  </span><br><span class="line">  // (3) 栈顶元素出栈，获取返回地址，保存在rax中</span><br><span class="line">  __ pop(rax);</span><br><span class="line">  </span><br><span class="line">  // (4) 计算第一个参数的地址，存放在 (rdi)</span><br><span class="line">  // 计算逻辑： rsp + rcx * 8 - 8 (假设 wordSize == 8)</span><br><span class="line">  __ lea(rdi, Address(rsp, rcx, Interpreter::stackElementScale(), -wordSize));</span><br><span class="line">  </span><br><span class="line">  // (5) 为局部变量分配栈空间</span><br><span class="line">  // rdx - # of additional locals</span><br><span class="line">  // allocate space for locals</span><br><span class="line">  // explicitly initialize locals</span><br><span class="line">  &#123;</span><br><span class="line">    Label exit, loop;</span><br><span class="line">    __ testl(rdx, rdx);</span><br><span class="line">    __ jcc(Assembler::lessEqual, exit);               // do nothing if rdx &lt;= 0</span><br><span class="line">    __ bind(loop);</span><br><span class="line">    __ push((int32_t)NULL_WORD);                      // initialize local variables</span><br><span class="line">    __ decrement(rdx);                                // until everything initialized</span><br><span class="line">    __ jcc(Assembler::greater, loop);</span><br><span class="line">    __ bind(exit);</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure></p>
+<p>到此，栈帧的结构为：</p>
+<h6 id="解释器栈帧结构–-创建方法入口–-为局部变量分配空间"><a href="#解释器栈帧结构–-创建方法入口–-为局部变量分配空间" class="headerlink" title="解释器栈帧结构– 创建方法入口– 为局部变量分配空间"></a>解释器栈帧结构– 创建方法入口– 为局部变量分配空间</h6><p><img src="/assets/blogImg/JVM/Stack/4.png" width="400"></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">// (6) 将方法的调用次数保存在rcx中</span><br><span class="line">if (inc_counter) &#123;</span><br><span class="line">  __ movl(rcx, invocation_counter);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">// （7）初始化栈帧的固定部分</span><br><span class="line">// initialize fixed part of activation frame</span><br><span class="line">generate_fixed_frame(false);</span><br></pre></td></tr></table></figure>
+<p>有必要进入<code>generate_fixed_frame</code>方法看看：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">// Generate a fixed interpreter frame. This is identical setup for</span><br><span class="line">// interpreted methods and for native methods hence the shared code.</span><br><span class="line">//</span><br><span class="line">// Args:</span><br><span class="line">//      rax: return address</span><br><span class="line">//      rbx: methodOop</span><br><span class="line">//      r14: pointer to locals</span><br><span class="line">//      r13: sender sp</span><br><span class="line">//      rdx: cp cache</span><br><span class="line">void TemplateInterpreterGenerator::generate_fixed_frame(bool native_call) &#123;</span><br><span class="line"></span><br><span class="line">  __ push(rax);        // save return address</span><br><span class="line">  __ enter();          // save old &amp; set new rbp</span><br><span class="line">  __ push(r13);        // set sender sp</span><br><span class="line">  __ push((int)NULL_WORD); // leave last_sp as null</span><br><span class="line">  __ movptr(r13, Address(rbx, methodOopDesc::const_offset()));      // get constMethodOop</span><br><span class="line">  __ lea(r13, Address(r13, constMethodOopDesc::codes_offset())); // get codebase</span><br><span class="line">  __ push(rbx);        // save methodOop</span><br><span class="line">  </span><br><span class="line">  __ push(0);</span><br><span class="line">  </span><br><span class="line">  __ movptr(rdx, Address(rbx, methodOopDesc::const_offset()));</span><br><span class="line">  __ movptr(rdx, Address(rdx, constMethodOopDesc::constants_offset()));</span><br><span class="line">  __ movptr(rdx, Address(rdx, constantPoolOopDesc::cache_offset_in_bytes()));</span><br><span class="line">  __ push(rdx); // set constant pool cache</span><br><span class="line">  __ push(r14); // set locals pointer</span><br><span class="line">  </span><br><span class="line">  if (native_call) &#123;</span><br><span class="line">    __ push(0); // no bcp</span><br><span class="line">  &#125; else &#123;</span><br><span class="line">    __ push(r13); // set bcp</span><br><span class="line">  &#125;</span><br><span class="line">  __ push(0); // reserve word for pointer to expression stack bottom</span><br><span class="line">  __ movptr(Address(rsp, 0), rsp); // set expression stack bottom</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>简单来说，这个方法做的是为解释执行的Java方法准备栈帧，此时栈帧结构如下：</p>
+<h6 id="解释器栈帧结构–-创建Java栈帧"><a href="#解释器栈帧结构–-创建Java栈帧" class="headerlink" title="解释器栈帧结构– 创建Java栈帧"></a>解释器栈帧结构– 创建Java栈帧</h6><p><img src="/assets/blogImg/JVM/Stack/5.png" width="400"></p>
+<p>继续看回<code>generate_normal_entry</code>方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">  // （8）增加方法的调用计数并且检查是否发生栈溢出</span><br><span class="line">  Label invocation_counter_overflow;</span><br><span class="line">  Label profile_method;</span><br><span class="line">  Label profile_method_continue;</span><br><span class="line">  if (inc_counter) &#123;</span><br><span class="line">    generate_counter_incr(&amp;invocation_counter_overflow, &amp;profile_method, &amp;profile_method_continue);</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  // （9）同步方法的Monitor对象分配和方法的加锁</span><br><span class="line">  if (synchronized) &#123;</span><br><span class="line">    // Allocate monitor and lock method</span><br><span class="line">    lock_method();</span><br><span class="line">  &#125; else &#123;</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  // ...</span><br><span class="line">  </span><br><span class="line">  return entry_point;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h4 id="对x86栈帧的内容的访问"><a href="#对x86栈帧的内容的访问" class="headerlink" title="对x86栈帧的内容的访问"></a>对x86栈帧的内容的访问</h4><p>上面已经给出了一般Java方法(zerolocals方法)的解释器帧的内存布局。</p>
+<p>如上图所示，JVM对帧内元素的读写是按照“ rbp + offset”的形式进行的。</p>
+<p>举一个例子，Java Thread获取栈帧的局部变量的过程：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">intptr_t* frame::interpreter_frame_local_at(int index) const &#123;</span><br><span class="line">  const int n = Interpreter::local_offset_in_bytes(index)/wordSize;</span><br><span class="line">  return &amp;((*interpreter_frame_locals_addr())[n]);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>通过<code>interpreter_frame_locals_addr()</code>得到局部变量表的基址，加上偏移量得到。</p>
+<p>继续看如何得到局部变量表的基址：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">// frame_x86.inline.hpp</span><br><span class="line">inline intptr_t** frame::interpreter_frame_locals_addr() const &#123;</span><br><span class="line">  return (intptr_t**)addr_at(interpreter_frame_locals_offset);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>继续看<code>addr_at</code>的实现（在frame.hpp）：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">intptr_t* addr_at(int index) const             &#123; return &amp;fp()[index];    &#125;</span><br></pre></td></tr></table></figure></p>
+<p>再看<code>fp()</code>的实现：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">// frame_x86.hpp</span><br><span class="line">intptr_t*   fp() const &#123; return _fp; &#125;</span><br></pre></td></tr></table></figure></p>
+<p>而<code>_fp</code>就是栈帧。</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/JVM/" rel="tag"># JVM</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/06/20/JVM_GC_Thread/" rel="next" title="HotSpot里面的GC线程(VMThread)">
+                <i class="fa fa-chevron-left"></i> HotSpot里面的GC线程(VMThread)
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/06/21/Stack_Frame/" rel="prev" title="栈帧基础知识">
+                栈帧基础知识 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">62</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">6</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">8</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#HotSpot的栈的基础"><span class="nav-number">1.</span> <span class="nav-text">HotSpot的栈的基础</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#栈帧"><span class="nav-number">1.1.</span> <span class="nav-text">栈帧</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#局部变量表"><span class="nav-number">1.2.</span> <span class="nav-text">局部变量表</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#操作数栈"><span class="nav-number">1.3.</span> <span class="nav-text">操作数栈</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#其他"><span class="nav-number">1.4.</span> <span class="nav-text">其他</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#HotSpot栈帧的实现"><span class="nav-number">2.</span> <span class="nav-text">HotSpot栈帧的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#涉及的类的介绍"><span class="nav-number">2.1.</span> <span class="nav-text">涉及的类的介绍</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#vframe"><span class="nav-number">2.1.1.</span> <span class="nav-text">vframe</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#javaVFrame"><span class="nav-number">2.1.2.</span> <span class="nav-text">javaVFrame</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#frame"><span class="nav-number">2.1.3.</span> <span class="nav-text">frame</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#frame-x86"><span class="nav-number">2.1.4.</span> <span class="nav-text">frame_x86</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Java方法的调用过程"><span class="nav-number">2.2.</span> <span class="nav-text">Java方法的调用过程</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#JavaCalls"><span class="nav-number">2.2.1.</span> <span class="nav-text">JavaCalls</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#StubRountines"><span class="nav-number">2.2.2.</span> <span class="nav-text">StubRountines</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#call-stub"><span class="nav-number">2.2.3.</span> <span class="nav-text">call_stub</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#补充"><span class="nav-number">2.2.4.</span> <span class="nav-text"> 补充</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#方法入口（method-entry-point，这部分与解释器有关）"><span class="nav-number">2.2.5.</span> <span class="nav-text">方法入口（method entry point，这部分与解释器有关）</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#zerolocals-方法的栈帧结构"><span class="nav-number">2.2.6.</span> <span class="nav-text">zerolocals 方法的栈帧结构</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#解释器栈帧结构–CallStub方法（简化）"><span class="nav-number">2.2.6.1.</span> <span class="nav-text">解释器栈帧结构–CallStub方法（简化）</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#解释器栈帧结构–-创建方法入口–-为局部变量分配空间"><span class="nav-number">2.2.6.2.</span> <span class="nav-text">解释器栈帧结构– 创建方法入口– 为局部变量分配空间</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#解释器栈帧结构–-创建Java栈帧"><span class="nav-number">2.2.6.3.</span> <span class="nav-text">解释器栈帧结构– 创建Java栈帧</span></a></li></ol></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#对x86栈帧的内容的访问"><span class="nav-number">2.3.</span> <span class="nav-text">对x86栈帧的内容的访问</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="Java线程的实现，可以分为如下3层：  下面，将分析HotSpot的实现细节。">
+<meta name="keywords" content="JVM">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HotSpot是如何实现Java线程的">
+<meta property="og:url" content="http://yoursite.com/2019/06/02/JVM_Thread/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="Java线程的实现，可以分为如下3层：  下面，将分析HotSpot的实现细节。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/Thread/1.png">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/Thread/2.png">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/Thread/3.png">
+<meta property="og:updated_time" content="2019-07-04T03:47:38.954Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="HotSpot是如何实现Java线程的">
+<meta name="twitter:description" content="Java线程的实现，可以分为如下3层：  下面，将分析HotSpot的实现细节。">
+<meta name="twitter:image" content="http://yoursite.com/assets/blogImg/JVM/Thread/1.png">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2019/06/02/JVM_Thread/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>HotSpot是如何实现Java线程的 | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/06/02/JVM_Thread/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">HotSpot是如何实现Java线程的
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-06-02 08:55:00" itemprop="dateCreated datePublished" datetime="2019-06-02T08:55:00+08:00">2019-06-02</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-07-04 11:47:38" itemprop="dateModified" datetime="2019-07-04T11:47:38+08:00">2019-07-04</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/JVM/" itemprop="url" rel="index"><span itemprop="name">JVM</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>Java线程的实现，可以分为如下3层：</p>
+<p><img src="/assets/blogImg/JVM/Thread/1.png" alt></p>
+<p>下面，将分析HotSpot的实现细节。</p>
+<a id="more"></a>
+<h3 id="线程层次结构"><a href="#线程层次结构" class="headerlink" title="线程层次结构"></a>线程层次结构</h3><p>Java线程实现的分层如上图。</p>
+<h4 id="Java应用层"><a href="#Java应用层" class="headerlink" title="Java应用层"></a>Java应用层</h4><p>这一层是我们使用最多的一层（Java 的<code>Thread</code>类）。<font color="orange">通过本地方法进入JVM层</font>（调用本地方法（<code>start0</code>），在JVM创建相应的实例）。</p>
+<h4 id="JVM层"><a href="#JVM层" class="headerlink" title="JVM层"></a>JVM层</h4><p>用户自定义的线程，就是在JVM层的<code>JavaThread</code>。</p>
+<h5 id="JVM的线程"><a href="#JVM的线程" class="headerlink" title="JVM的线程"></a>JVM的线程</h5><p>JVM中有多种线程，不同类型的线程承担着不同的职责。其继承结构如下图：</p>
+<p><img src="/assets/blogImg/JVM/Thread/2.png" alt></p>
+<p>这些线程大概可以分成两类：</p>
+<ul>
+<li>虚拟机工作线程：这一类的线程承担了JVM自身的一些工作职责，如监控、GC；</li>
+<li>用户自定义线程：实际上也就是 JavaThread，对应于用户创建的Thread实例。这些线程主要是执行用户任务；</li>
+</ul>
+<h5 id="JavaThread的继承关系"><a href="#JavaThread的继承关系" class="headerlink" title="JavaThread的继承关系"></a>JavaThread的继承关系</h5><p>JavaThread的继承关系如图：</p>
+<p><img src="/assets/blogImg/JVM/Thread/3.png" alt></p>
+<p><font size="4" color="red">注意</font>：<br>JavaThread是CHeapObj的子类。CHeapObj，顾名思义，是C-heap对象，它被C当中的free和malloc两个操作进行管理。这意味着，JavaThread的实例，并不是在JVM中的堆中被管理的，也就是，它<font color="red">不会被垃圾回收所管理</font>。在后面我们将看到，在执行了线程的entry_point之后，线程会被显示调用的delete所销毁。</p>
+<h5 id="JavaThread的创建"><a href="#JavaThread的创建" class="headerlink" title="JavaThread的创建"></a>JavaThread的创建</h5><p>JavaThread的创建，是通过调用glibc库的pthread_create方法的。具体可以看<code>os::create_thread</code>方法。</p>
+<p>pthread_create方法的定义：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">// glibc/nptl/nptl/sysdeps/pthread/pthread.h</span><br><span class="line">extern int pthread_create (pthread_t *__restrict __newthread,</span><br><span class="line">            const pthread_attr_t *__restrict __attr,</span><br><span class="line">            void *(*__start_routine) (void *),</span><br><span class="line">            void *__restrict __arg) __THROWNL __nonnull ((1, 3));</span><br></pre></td></tr></table></figure></p>
+<p>该方法的参数依次是：</p>
+<ul>
+<li>__newthread: 新创建的线程ID会被设置到该参数指向的内存单元</li>
+<li>__attr: 该参数用于定制不同的线程属性</li>
+<li>__start_routine: 这是一个函数指针，新创建的线程将从函数开始的地址开始运行</li>
+<li><strong>arg: 这是一个无类型指针参数，是</strong>start_routine函数的唯一的参数</li>
+</ul>
+<h5 id="JavaThread的运行"><a href="#JavaThread的运行" class="headerlink" title="JavaThread的运行"></a>JavaThread的运行</h5><p>JavaThread创建后，会调用<code>java_start</code>方法，它定义在 ox_linux.cpp，作为启动例程（start routine）在调用<code>pthread_create</code>时指定。</p>
+<p>这个方法在进行以下设置后，会调用<code>JavaThread::run</code>方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">void JavaThread::run() &#123;</span><br><span class="line">  // initialize thread-local alloc buffer related fields</span><br><span class="line">  // 准备 tlab</span><br><span class="line">  this-&gt;initialize_tlab();</span><br><span class="line"></span><br><span class="line">  // Record real stack base and size.</span><br><span class="line">  // 栈基址、大小</span><br><span class="line">  this-&gt;record_stack_base_and_size();</span><br><span class="line"></span><br><span class="line">  // Initialize thread local storage; set before calling MutexLocker</span><br><span class="line">  this-&gt;initialize_thread_local_storage();</span><br><span class="line"></span><br><span class="line">  this-&gt;create_stack_guard_pages();</span><br><span class="line"></span><br><span class="line">  this-&gt;cache_global_variables();</span><br><span class="line"></span><br><span class="line">  // Thread is now sufficient initialized to be handled by the safepoint code as being</span><br><span class="line">  // in the VM. Change thread state from _thread_new to _thread_in_vm</span><br><span class="line">  // 设置线程状态，这样才能被JVM使用</span><br><span class="line">  ThreadStateTransition::transition_and_fence(this, _thread_new, _thread_in_vm);</span><br><span class="line"></span><br><span class="line">  </span><br><span class="line">  // 触发一个线程开始的事件</span><br><span class="line">  EventThreadStart event;</span><br><span class="line">  if (event.should_commit()) &#123;</span><br><span class="line">     event.set_javalangthread(java_lang_Thread::thread_id(this-&gt;threadObj()));</span><br><span class="line">     event.commit();</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  // 这里调用 entry_point，进入应用程序的逻辑</span><br><span class="line">  thread_main_inner();</span><br><span class="line"></span><br><span class="line">  // Note, thread is no longer valid at this point!</span><br><span class="line">  // 到这里，表示线程已经完成使命，已经不能再用了。</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>其中，令线程执行应用程序逻辑的<code>thread_main_inner</code>方法，其实只是调用JavaThread的<code>_entry_point</code>，它是函数指针，对应的函数是：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">static void thread_entry(JavaThread* thread, TRAPS) &#123;</span><br><span class="line">  HandleMark hm(THREAD);</span><br><span class="line">  Handle obj(THREAD, thread-&gt;threadObj());</span><br><span class="line">  JavaValue result(T_VOID);</span><br><span class="line">  JavaCalls::call_virtual(&amp;result,</span><br><span class="line">                          obj,</span><br><span class="line">                          KlassHandle(THREAD, SystemDictionary::Thread_klass()),</span><br><span class="line">                          vmSymbols::run_method_name(),</span><br><span class="line">                          vmSymbols::void_method_signature(),</span><br><span class="line">                          THREAD);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>关于<code>JavaCalls</code>以后再说，上面代码做的是调用Java线程（用户定义的那个）的<code>run</code>方法。</p>
+<h4 id="内核层"><a href="#内核层" class="headerlink" title="内核层"></a>内核层</h4><p>现在我们将脱离JVM的源码，要进入到glibc和操作系统底层，揭开Java线程实现的最后一道面纱。为了搞清楚这个问题，首先要了解一点<br>Linux内核中关于线程和进程的基础知识。</p>
+<ul>
+<li>在Linux系统中，线程又被称为轻量级线程(lightweight process)</li>
+<li>在Linux系统上创建线程相对还是比较廉价的–它允许调用方决定创建的新的线程共享老线程的哪些信息</li>
+<li>Linux的线程模型是一对一的，就意味着，每一个用户级线程都有一个对应的内核线程。如果我们将JVM创建的线程看成是用户级线程，那么这个线程背后，就是一个内核线程在支持。这种模型对Java线程有很大影响，例如：<ul>
+<li>当一个线程被阻塞了， 内核可以调度另外一个线程继续执行。</li>
+<li>Linux系统对进程的限制，大部分都会直接影响到Java线程，比如说线程数量的限制。</li>
+</ul>
+</li>
+</ul>
+<h3 id="线程栈空间分配"><a href="#线程栈空间分配" class="headerlink" title="线程栈空间分配"></a>线程栈空间分配</h3><ul>
+<li><font color="red">JVM没有显式的栈区，它的栈依赖于系统实现</font>。</li>
+<li><font color="red">JVM对线程栈的管理，都是通过glibc的调用来实现的，归根到底是操作系统在管理线程栈</font>。</li>
+</ul>
+<p>分配栈空间的代码在pthread_create.c：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">int err = ALLOCATE_STACK (iattr, &amp;pd);</span><br><span class="line">if (__builtin_expect (err != 0, 0))</span><br><span class="line">  /* Something went wrong.  Maybe a parameter of the attributes is</span><br><span class="line">     invalid or we could not allocate memory.  Note we have to</span><br><span class="line">     translate error codes.  */</span><br><span class="line">  return err == ENOMEM ? EAGAIN : err;</span><br></pre></td></tr></table></figure></p>
+<p>ALLOCATE_STACK是一个宏，它只是调用了:<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">// glibc/nptl/allocatestack.c</span><br><span class="line">static int</span><br><span class="line">allocate_stack (const struct pthread_attr *attr, struct pthread **pdp,</span><br><span class="line">        ALLOCATE_STACK_PARMS)</span><br></pre></td></tr></table></figure></p>
+<p>该方法使用到了一个我们在JVM中时常配置的参数-Xss，线程栈的大小(通过将栈大小设置到pthread_attr)。</p>
+<p><font size="3"><strong>影响栈大小的设置</strong></font></p>
+<ul>
+<li><font color="red">栈内分配</font>：对于一个对象来说，如果经过逃逸分析，可以确定这个对象只会在方法内部被使用，那么这个对象可以直接被分配在栈上，而不必分配到堆上。这种优化会极大的影响栈大小的设置。因为相比仅仅存放一个指针而言，存放一个完整的对象，所需的空间是要多很多的;</li>
+<li><font color="red">栈帧重叠</font>：在HotSpot内部，每一次方法调用，调用者的操作数栈和被调用者的局部变量表是有一部分重叠，这能够节省一部分的空间;</li>
+</ul>
+<h3 id="JVM对线程栈空间的管理"><a href="#JVM对线程栈空间的管理" class="headerlink" title="JVM对线程栈空间的管理"></a>JVM对线程栈空间的管理</h3><p>虽然HotSpot的栈是依赖于系统实现，JVM还是需要获取栈的基址、大小，判断是否会访问栈以外的地址（即栈溢出）。</p>
+<h4 id="JVM的栈空间"><a href="#JVM的栈空间" class="headerlink" title="JVM的栈空间"></a>JVM的栈空间</h4><p>以Linux为例，看到os_linux_x86.cpp的注释：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">// Java thread:</span><br><span class="line">//</span><br><span class="line">//   Low memory addresses</span><br><span class="line">//    +------------------------+</span><br><span class="line">//    |                        |\  JavaThread created by VM does not have glibc</span><br><span class="line">//    |    glibc guard page    | - guard, attached Java thread usually has</span><br><span class="line">//    |                        |/  1 page glibc guard.</span><br><span class="line">// P1 +------------------------+ Thread::stack_base() - Thread::stack_size()</span><br><span class="line">//    |                        |\</span><br><span class="line">//    |  HotSpot Guard Pages   | - red and yellow pages</span><br><span class="line">//    |                        |/</span><br><span class="line">//    +------------------------+ JavaThread::stack_yellow_zone_base()</span><br><span class="line">//    |                        |\</span><br><span class="line">//    |      Normal Stack      | -</span><br><span class="line">//    |                        |/</span><br><span class="line">// P2 +------------------------+ Thread::stack_base()</span><br><span class="line">//</span><br><span class="line">// Non-Java thread:</span><br><span class="line">//</span><br><span class="line">//   Low memory addresses</span><br><span class="line">//    +------------------------+</span><br><span class="line">//    |                        |\</span><br><span class="line">//    |  glibc guard page      | - usually 1 page</span><br><span class="line">//    |                        |/</span><br><span class="line">// P1 +------------------------+ Thread::stack_base() - Thread::stack_size()</span><br><span class="line">//    |                        |\</span><br><span class="line">//    |      Normal Stack      | -</span><br><span class="line">//    |                        |/</span><br><span class="line">// P2 +------------------------+ Thread::stack_base()</span><br><span class="line">//</span><br><span class="line">// ** P1 (aka bottom) and size ( P2 = P1 - size) are the address and stack size returned from</span><br><span class="line">//    pthread_attr_getstack()</span><br></pre></td></tr></table></figure></p>
+<p>总结：</p>
+<ul>
+<li>Linux下线程栈是往低地址方式增长的（栈顶在低地址）</li>
+<li>对于Java线程，存在一块叫“HotSpot Guard Pages”的区域</li>
+</ul>
+<h4 id="HotSpot的Guard-Pages"><a href="#HotSpot的Guard-Pages" class="headerlink" title="HotSpot的Guard Pages"></a>HotSpot的Guard Pages</h4><h5 id="Guard-Pages机制"><a href="#Guard-Pages机制" class="headerlink" title="Guard Pages机制"></a>Guard Pages机制</h5><p>HotSpot Guard Pages 包含 <font color="red"><strong>red page</strong></font> 和 <font color="cream"><strong>yellow page</strong></font>：</p>
+<ul>
+<li><font color="red"><strong>red page</strong></font>：在 yellow page 的“上面”。</li>
+<li><font color="cream"><strong>yellow page</strong></font>：是可恢复栈溢出处理用的。</li>
+<li><font color="red"><strong>red page</strong></font> 是不可恢复栈溢出用的。</li>
+</ul>
+<p>HotSpot VM的实现有个特别的地方，就是栈溢出的处理是在发生溢出的线程上进行的，而且继续使用该线程原本的栈（而不使用alternative stack）。这就意味着某个线程在本来已经发生栈溢出的状况下要处理栈溢出异常还得进一步使用更多栈空间，这是个悖论—-<strong><em>已经没栈空间用了</em></strong>。</p>
+<p>所以预留出来的yellow page在平时处于不可读写状态，一旦被读写就意味着发生了栈溢出。在处理栈溢出时会临时把<font color="cream"><strong>yellow page</strong></font>的权限改为可读写，“借给”处理函数分配其栈桢，完事之后再恢复为不可读写状态。</p>
+<p>而如果访问到了<font color="red"><strong>red page</strong></font>那就彻底超过极限了，HotSpot VM就会让进程直接crash掉。</p>
+<h5 id="Guard-Pages创建"><a href="#Guard-Pages创建" class="headerlink" title="Guard Pages创建"></a>Guard Pages创建</h5><p>以Linux平台为例。</p>
+<p>在<code>JavaThread::run</code>方法里面，会调用<code>JavaThread::create_stack_guard_pages</code>方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">if (! os::uses_stack_guard_pages() || _stack_guard_state != stack_guard_unused) return;</span><br><span class="line"></span><br><span class="line">address low_addr = stack_base() - stack_size();</span><br><span class="line">size_t len = (StackYellowPages + StackRedPages) * os::vm_page_size();</span><br><span class="line"></span><br><span class="line">int allocate = os::allocate_stack_guard_pages();</span><br><span class="line">// warning(&quot;Guarding at &quot; PTR_FORMAT &quot; for len &quot; SIZE_FORMAT &quot;\n&quot;, low_addr, len);</span><br><span class="line"></span><br><span class="line">if (allocate &amp;&amp; !os::create_stack_guard_pages((char *) low_addr, len)) &#123;</span><br><span class="line">  warning(&quot;Attempt to allocate stack guard pages failed.&quot;);</span><br><span class="line">  return;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">if (os::guard_memory((char *) low_addr, len)) &#123;</span><br><span class="line">  _stack_guard_state = stack_guard_enabled;</span><br><span class="line">&#125; else &#123;</span><br><span class="line">  warning(&quot;Attempt to protect stack guard pages failed.&quot;);</span><br><span class="line">  if (os::uncommit_memory((char *) low_addr, len)) &#123;</span><br><span class="line">    warning(&quot;Attempt to deallocate stack guard pages failed.&quot;);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<ul>
+<li>通过<code>os::create_stack_guard_pages</code>方法创建 guard page，最后调用的是系统调用<code>mmap</code></li>
+<li>通过<code>os::guard_memory</code>方法对guard page进行保护<ul>
+<li>实际上通过系统调用<code>mprotect</code>，将guard page设置为不允许进程访问</li>
+<li>当有进程访问了，内核会创建一个 <strong><em>SIGSEGV</em></strong> 信号给这个进程。</li>
+</ul>
+</li>
+</ul>
+<h5 id="对SIGSEGV-信号的处理"><a href="#对SIGSEGV-信号的处理" class="headerlink" title="对SIGSEGV 信号的处理"></a>对SIGSEGV 信号的处理</h5><p>在 os_linux_x86.cpp 文件下的 <code>JVM_handle_linux_signal</code>方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line">// Handle ALL stack overflow variations here</span><br><span class="line">if (sig == SIGSEGV) &#123;</span><br><span class="line">  address addr = (address) info-&gt;si_addr;</span><br><span class="line">  </span><br><span class="line">  // check if fault address is within thread stack</span><br><span class="line">  if (addr &lt; thread-&gt;stack_base() &amp;&amp;</span><br><span class="line">      addr &gt;= thread-&gt;stack_base() - thread-&gt;stack_size()) &#123;</span><br><span class="line">      </span><br><span class="line">    // stack overflow</span><br><span class="line">    if (thread-&gt;in_stack_yellow_zone(addr)) &#123;</span><br><span class="line">      thread-&gt;disable_stack_yellow_zone();</span><br><span class="line">      if (thread-&gt;thread_state() == _thread_in_Java) &#123;</span><br><span class="line">        // Throw a stack overflow exception.  Guard pages will bereenabled</span><br><span class="line">        // while unwinding the stack.</span><br><span class="line">        stub = SharedRuntime::continuation_for_implicit_exception(thred, pc, SharedRuntime::STACK_OVERFLOW);</span><br><span class="line">      &#125; else &#123;</span><br><span class="line">        // Thread was in the vm or native code.  Return and try to finish.</span><br><span class="line">        return 1;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125; </span><br><span class="line">    else if (thread-&gt;in_stack_red_zone(addr)) &#123;</span><br><span class="line">      // Fatal red zone violation.  Disable the guard pages and fallthrough</span><br><span class="line">      // to handle_unexpected_exception way down below.</span><br><span class="line">      thread-&gt;disable_stack_red_zone();</span><br><span class="line">      tty-&gt;print_raw_cr(&quot;An irrecoverable stack overflow hasoccurred.&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">    else &#123;</span><br><span class="line">      // Accessing stack address below sp may cause SEGV if current</span><br><span class="line">      // thread has MAP_GROWSDOWN stack. This should only happen when</span><br><span class="line">      // current thread was created by user code with MAP_GROWSDOWNflag</span><br><span class="line">      // and then attached to VM. See notes in os_linux.cpp.</span><br><span class="line">      if (thread-&gt;osthread()-&gt;expanding_stack() == 0) &#123;</span><br><span class="line">         thread-&gt;osthread()-&gt;set_expanding_stack();</span><br><span class="line">         if (os::Linux::manually_expand_stack(thread, addr)) &#123;</span><br><span class="line">           thread-&gt;osthread()-&gt;clear_expanding_stack();</span><br><span class="line">           return 1;</span><br><span class="line">         &#125;</span><br><span class="line">         thread-&gt;osthread()-&gt;clear_expanding_stack();</span><br><span class="line">      &#125; else &#123;</span><br><span class="line">         fatal(&quot;recursive segv. expanding stack.&quot;);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>获取产生 SIGSEGV 信号的地址：</p>
+<ul>
+<li>如果处于 <font color="cream"><strong>yellow page</strong></font> 区域，那么产生 stack overflow exception。</li>
+<li>如果处于 <font color="red"><strong>red page</strong></font> 区域，将导致JVM进程退出，不过会有 crash 日志。</li>
+</ul>
+<p>另外，如果处于 red page 区域，并且没有栈空间了，这时连这个信号处理函数都进不去，进程会crash并且没有日志产生。</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/JVM/" rel="tag"># JVM</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/06/01/JVM_Basic_Concept/" rel="next" title="JVM和JRE">
+                <i class="fa fa-chevron-left"></i> JVM和JRE
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/06/03/JVM_JNI_ENTRY_JNI_END/" rel="prev" title="JNI_ENTRY和JNI_END宏">
+                JNI_ENTRY和JNI_END宏 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">62</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">6</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">8</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#线程层次结构"><span class="nav-number">1.</span> <span class="nav-text">线程层次结构</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Java应用层"><span class="nav-number">1.1.</span> <span class="nav-text">Java应用层</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#JVM层"><span class="nav-number">1.2.</span> <span class="nav-text">JVM层</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#JVM的线程"><span class="nav-number">1.2.1.</span> <span class="nav-text">JVM的线程</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#JavaThread的继承关系"><span class="nav-number">1.2.2.</span> <span class="nav-text">JavaThread的继承关系</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#JavaThread的创建"><span class="nav-number">1.2.3.</span> <span class="nav-text">JavaThread的创建</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#JavaThread的运行"><span class="nav-number">1.2.4.</span> <span class="nav-text">JavaThread的运行</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#内核层"><span class="nav-number">1.3.</span> <span class="nav-text">内核层</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#线程栈空间分配"><span class="nav-number">2.</span> <span class="nav-text">线程栈空间分配</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#JVM对线程栈空间的管理"><span class="nav-number">3.</span> <span class="nav-text">JVM对线程栈空间的管理</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#JVM的栈空间"><span class="nav-number">3.1.</span> <span class="nav-text">JVM的栈空间</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#HotSpot的Guard-Pages"><span class="nav-number">3.2.</span> <span class="nav-text">HotSpot的Guard Pages</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#Guard-Pages机制"><span class="nav-number">3.2.1.</span> <span class="nav-text">Guard Pages机制</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#Guard-Pages创建"><span class="nav-number">3.2.2.</span> <span class="nav-text">Guard Pages创建</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#对SIGSEGV-信号的处理"><span class="nav-number">3.2.3.</span> <span class="nav-text">对SIGSEGV 信号的处理</span></a></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
