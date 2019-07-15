@@ -96,18 +96,18 @@
 
 
 
-  <meta name="description" content="学习JVM源码Synchronized锁部分，写了如下几篇文章：  Synchronized底层实现—-概论 Synchronized底层实现—-偏向锁（本文） Synchronized底层实现—-轻量级锁 Synchronized底层实现—-重量级锁">
+  <meta name="description" content="学习JVM源码Synchronized锁部分，写了如下几篇文章：  Synchronized底层实现—-概述 Synchronized底层实现—-偏向锁（本文） Synchronized底层实现—-轻量级锁 Synchronized底层实现—-重量级锁">
 <meta name="keywords" content="JVM">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Synchronized底层实现—-偏向锁">
 <meta property="og:url" content="http://yoursite.com/2019/06/24/JVM_Synchronized_Bias/index.html">
 <meta property="og:site_name" content="Hexo">
-<meta property="og:description" content="学习JVM源码Synchronized锁部分，写了如下几篇文章：  Synchronized底层实现—-概论 Synchronized底层实现—-偏向锁（本文） Synchronized底层实现—-轻量级锁 Synchronized底层实现—-重量级锁">
+<meta property="og:description" content="学习JVM源码Synchronized锁部分，写了如下几篇文章：  Synchronized底层实现—-概述 Synchronized底层实现—-偏向锁（本文） Synchronized底层实现—-轻量级锁 Synchronized底层实现—-重量级锁">
 <meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2019-07-04T13:39:55.347Z">
+<meta property="og:updated_time" content="2019-07-08T08:23:47.359Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Synchronized底层实现—-偏向锁">
-<meta name="twitter:description" content="学习JVM源码Synchronized锁部分，写了如下几篇文章：  Synchronized底层实现—-概论 Synchronized底层实现—-偏向锁（本文） Synchronized底层实现—-轻量级锁 Synchronized底层实现—-重量级锁">
+<meta name="twitter:description" content="学习JVM源码Synchronized锁部分，写了如下几篇文章：  Synchronized底层实现—-概述 Synchronized底层实现—-偏向锁（本文） Synchronized底层实现—-轻量级锁 Synchronized底层实现—-重量级锁">
 
 
 
@@ -384,7 +384,7 @@
                 
                   <span class="post-meta-item-text">更新于</span>
                 
-                <time title="修改时间：2019-07-04 21:39:55" itemprop="dateModified" datetime="2019-07-04T21:39:55+08:00">2019-07-04</time>
+                <time title="修改时间：2019-07-08 16:23:47" itemprop="dateModified" datetime="2019-07-08T16:23:47+08:00">2019-07-08</time>
               
             
           </span>
@@ -435,7 +435,7 @@
       
         <p>学习JVM源码Synchronized锁部分，写了如下几篇文章：</p>
 <ul>
-<li>Synchronized底层实现—-概论</li>
+<li>Synchronized底层实现—-概述</li>
 <li>Synchronized底层实现—-偏向锁（本文）</li>
 <li>Synchronized底层实现—-轻量级锁</li>
 <li>Synchronized底层实现—-重量级锁</li>
@@ -462,7 +462,7 @@
 <p>看到<code>revoke_and_rebias</code>方法：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br></pre></td><td class="code"><pre><span class="line">BiasedLocking::Condition BiasedLocking::revoke_and_rebias(Handle obj, bool attempt_rebias, TRAPS) &#123;</span><br><span class="line"></span><br><span class="line">  assert(!SafepointSynchronize::is_at_safepoint(), &quot;must not be called while at safepoint&quot;);</span><br><span class="line">  </span><br><span class="line">  markOop mark = obj-&gt;mark();</span><br><span class="line">  </span><br><span class="line">  // ## 1. 如果当前锁是【匿名偏向】 并且 【不是要获取偏向锁】</span><br><span class="line">  // --------&gt;  如锁对象的hashcode方法被调用会出现这种情况，需要撤销偏向锁。 &lt;-----</span><br><span class="line">  if (mark-&gt;is_biased_anonymously() &amp;&amp; !attempt_rebias) &#123;</span><br><span class="line">    markOop biased_value       = mark;</span><br><span class="line">    markOop unbiased_prototype = markOopDesc::prototype()-&gt;set_age(mark-&gt;age());</span><br><span class="line">    markOop res_mark = (markOop) Atomic::cmpxchg_ptr(unbiased_prototype, obj-&gt;mark_addr(), mark);</span><br><span class="line">    if (res_mark == biased_value) &#123;</span><br><span class="line">      return BIAS_REVOKED;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  // ## 2. 如果锁对象开启偏向锁</span><br><span class="line">  else if (mark-&gt;has_bias_pattern()) &#123;</span><br><span class="line">    Klass* k = obj-&gt;klass();</span><br><span class="line">    markOop prototype_header = k-&gt;prototype_header();</span><br><span class="line">    </span><br><span class="line">    // ## 2.1 如果对应的 klass 关闭了偏向锁，即发生了 【bulk_revoke】</span><br><span class="line">    // 这时，只需要通过 CAS 设置对象的 Mark Word（为 klass 的 mark word）。不需要记录锁撤销。</span><br><span class="line">    // 即使 CAS 操作失败，说明【有其他线程将它撤销了】，于是直接返回。</span><br><span class="line">    if (!prototype_header-&gt;has_bias_pattern()) &#123;</span><br><span class="line">      markOop biased_value       = mark;</span><br><span class="line">      markOop res_mark = (markOop) Atomic::cmpxchg_ptr(prototype_header, obj-&gt;mark_addr(), mark);</span><br><span class="line">      assert(!(*(obj-&gt;mark_addr()))-&gt;has_bias_pattern(), &quot;even if we raced, should still be revoked&quot;);</span><br><span class="line">      return BIAS_REVOKED;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // ## 2.2 如果锁对象的epoch过期了，意味着这个对象的状态是【未偏向】的</span><br><span class="line">    // 因此可以直接通过 CAS 操作设置对象的 Mark Word。不需要记录锁撤销。</span><br><span class="line">    else if (prototype_header-&gt;bias_epoch() != mark-&gt;bias_epoch()) &#123;</span><br><span class="line">    </span><br><span class="line">      // ## 2.2.1 将锁重偏向为当前线程</span><br><span class="line">      if (attempt_rebias) &#123;</span><br><span class="line">        assert(THREAD-&gt;is_Java_thread(), &quot;&quot;);</span><br><span class="line">        markOop biased_value       = mark;</span><br><span class="line">        markOop rebiased_prototype = markOopDesc::encode((JavaThread*) THREAD, mark-&gt;age(), prototype_header-&gt;bias_epoch());</span><br><span class="line">        markOop res_mark = (markOop) Atomic::cmpxchg_ptr(rebiased_prototype, obj-&gt;mark_addr(), mark);</span><br><span class="line">        if (res_mark == biased_value) &#123;</span><br><span class="line">          return BIAS_REVOKED_AND_REBIASED;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125; </span><br><span class="line">      // ## 2.2.2 将锁撤销</span><br><span class="line">      else &#123;</span><br><span class="line">        markOop biased_value       = mark;</span><br><span class="line">        markOop unbiased_prototype = markOopDesc::prototype()-&gt;set_age(mark-&gt;age());</span><br><span class="line">        markOop res_mark = (markOop) Atomic::cmpxchg_ptr(unbiased_prototype, obj-&gt;mark_addr(), mark);</span><br><span class="line">        if (res_mark == biased_value) &#123;</span><br><span class="line">          return BIAS_REVOKED;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  </span><br><span class="line">  // ## 3. 更新偏向锁撤销的次数（与批量重偏向与批量撤销相关）</span><br><span class="line">  HeuristicsResult heuristics = update_heuristics(obj(), attempt_rebias);</span><br><span class="line">  // ## 3.1 当前锁对象状态为【不可偏向】</span><br><span class="line">  if (heuristics == HR_NOT_BIASED) &#123;</span><br><span class="line">    return NOT_BIASED;</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  // ## 3.2 撤销单个线程获得的偏向锁</span><br><span class="line">  else if (heuristics == HR_SINGLE_REVOKE) &#123;</span><br><span class="line">    Klass *k = obj-&gt;klass();</span><br><span class="line">    markOop prototype_header = k-&gt;prototype_header();</span><br><span class="line">    </span><br><span class="line">    // ## 3.2.1 如果撤销的是当前线程自己的偏向锁（比如调用 hashcode()方法导致）</span><br><span class="line">    // 只需要直接修改锁对象的 Mark Word 即可。 </span><br><span class="line">    if (mark-&gt;biased_locker() == THREAD &amp;&amp;</span><br><span class="line">        prototype_header-&gt;bias_epoch() == mark-&gt;bias_epoch()) &#123;</span><br><span class="line">      BiasedLocking::Condition cond = revoke_bias(obj(), false, false, (JavaThread*) THREAD);</span><br><span class="line">      ((JavaThread*) THREAD)-&gt;set_cached_monitor_info(NULL);</span><br><span class="line">      assert(cond == BIAS_REVOKED, &quot;why not?&quot;);</span><br><span class="line">      return cond;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    // ## 3.2.2 如果撤销的是其他线程拥有的偏向锁，就需要通过VM线程撤销偏向锁</span><br><span class="line">    else &#123;</span><br><span class="line">      VM_RevokeBias revoke(&amp;obj, (JavaThread*) THREAD);</span><br><span class="line">      VMThread::execute(&amp;revoke);</span><br><span class="line">      return revoke.status_code();</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  </span><br><span class="line">  assert((heuristics == HR_BULK_REVOKE) ||</span><br><span class="line">         (heuristics == HR_BULK_REBIAS), &quot;?&quot;);</span><br><span class="line">         </span><br><span class="line">  // ## 4. 通过VM线程执行【批量撤销、批量重偏向】的逻辑</span><br><span class="line">  VM_BulkRevokeBias bulk_revoke(&amp;obj, (JavaThread*) THREAD,</span><br><span class="line">                                (heuristics == HR_BULK_REBIAS),</span><br><span class="line">                                attempt_rebias);</span><br><span class="line">  VMThread::execute(&amp;bulk_revoke);</span><br><span class="line">  return bulk_revoke.status_code();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
 <p>这个方法的逻辑可以总结为：</p>
 <ul>
-<li>之所以会进入到这个<code>revoke_and_rebias</code>方法，是由于获取偏向锁失败了（出现线程竞争），于是需要撤销偏向锁。（由于支持==批量撤销、批量重偏向==的关系，使得这个方法变复杂了）</li>
+<li>之所以会进入到这个<code>revoke_and_rebias</code>方法，是由于获取偏向锁失败了（出现线程竞争），于是需要撤销偏向锁。（由于支持<strong>批量撤销、批量重偏向</strong>的关系，使得这个方法变复杂了）</li>
 <li>先处理以下情况，它们都是不需要记录锁撤销的：<ul>
 <li>如果 klass 关闭了偏向锁，即发生了【批量撤销】：设置对象mark word为klass的值，然后返回。</li>
 <li>锁对象的epoch过期，即锁对象是未偏向的：只要通过CAS设置对象的 Mark Word（将锁重偏向或将锁撤销），然后返回</li>
@@ -596,8 +596,8 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/2019/06/23/JVM_Synchronized_Introduce/" rel="next" title="Synchronized底层实现—-概论">
-                <i class="fa fa-chevron-left"></i> Synchronized底层实现—-概论
+              <a href="/2019/06/23/JVM_Synchronized_Introduce/" rel="next" title="Synchronized底层实现—-概述">
+                <i class="fa fa-chevron-left"></i> Synchronized底层实现—-概述
               </a>
             
           </div>
@@ -673,7 +673,7 @@
                 
                   <a href="/archives/">
                 
-                    <span class="site-state-item-count">62</span>
+                    <span class="site-state-item-count">66</span>
                     <span class="site-state-item-name">日志</span>
                   </a>
                 </div>

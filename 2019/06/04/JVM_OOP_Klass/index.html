@@ -108,8 +108,7 @@
 <meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/Oop_Klass/2.png">
 <meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/Oop_Klass/3.png">
 <meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/Oop_Klass/4.png">
-<meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/Oop_Klass/5.png">
-<meta property="og:updated_time" content="2019-07-04T06:37:10.602Z">
+<meta property="og:updated_time" content="2019-07-08T08:53:06.976Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="HotSpot中类与对象的表示">
 <meta name="twitter:description" content="HotSpot中类与对象的表示，使用所谓的OOP-Klass 二分模型，下面了解这部分的内容。">
@@ -390,7 +389,7 @@
                 
                   <span class="post-meta-item-text">更新于</span>
                 
-                <time title="修改时间：2019-07-04 14:37:10" itemprop="dateModified" datetime="2019-07-04T14:37:10+08:00">2019-07-04</time>
+                <time title="修改时间：2019-07-08 16:53:06" itemprop="dateModified" datetime="2019-07-08T16:53:06+08:00">2019-07-08</time>
               
             
           </span>
@@ -462,7 +461,7 @@
 
 <h5 id="模块划分"><a href="#模块划分" class="headerlink" title="模块划分"></a>模块划分</h5><p>这部分属于 vm下的 oops 模块。而oops 模块的组成如下：<br><img src="/assets/blogImg/JVM/Oop_Klass/1.png" alt></p>
 <h5 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h5><p>设计这套模型的原因在代码的注释有说明：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">// A Klass is the part of the klassOop that provides:</span><br><span class="line">//  1: language level class object (method dictionary etc.)</span><br><span class="line">//  2: provide vm dispatch behavior for the object</span><br><span class="line">// Both functions are combined into one C++ class. The toplevel class &quot;Klass&quot;</span><br><span class="line">// implements purpose 1 whereas all subclasses provide extra virtual functions</span><br><span class="line">// for purpose 2.</span><br><span class="line"></span><br><span class="line">// One reason for the oop/klass dichotomy in the implementation is</span><br><span class="line">// that we don&apos;t want a C++ vtbl pointer in every object.  Thus,</span><br><span class="line">// normal oops don&apos;t have any virtual functions.  Instead, they</span><br><span class="line">// forward all &quot;virtual&quot; functions to their klass, which does have</span><br><span class="line">// a vtbl and does the C++ dispatch depending on the object&apos;s</span><br><span class="line">// actual type.  (See oop.inline.hpp for some of the forwarding code.)</span><br><span class="line">// ALL FUNCTIONS IMPLEMENTING THIS DISPATCH ARE PREFIXED WITH &quot;oop_&quot;!</span><br></pre></td></tr></table></figure></p>
-<p>其实就是<font color="red">不想让每个对象都包含vtbl(虚方法表)，其中oop中不含有任何虚函数，虚函数表保存于klass中，可以进行method dispatch</font>。</p>
+<p>其实是在c++层面考虑的：<font color="red">不想让每个对象都包含c++ 的 vtbl 指针，现在oop中不含有任何虚函数，虚函数表指针 vtbl 保存于klass中</font>。</p>
 <h3 id="相关oop和Klass-的内存布局"><a href="#相关oop和Klass-的内存布局" class="headerlink" title="相关oop和Klass 的内存布局"></a>相关oop和Klass 的内存布局</h3><h4 id="相关的-oop-结构："><a href="#相关的-oop-结构：" class="headerlink" title="相关的 oop 结构："></a>相关的 oop 结构：</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line">// oopDesc is the top baseclass for objects classes.</span><br><span class="line">class oopDesc &#123;</span><br><span class="line">    private:</span><br><span class="line">        volatile markOop  _mark;            </span><br><span class="line">        union _metadata &#123;</span><br><span class="line">        wideKlassOop    _klass;</span><br><span class="line">        narrowOop       _compressed_klass;</span><br><span class="line">    &#125; _metadata;</span><br><span class="line">    ....</span><br><span class="line">&#125;</span><br><span class="line">  </span><br><span class="line"></span><br><span class="line">// 通常使用 instanceOopDesc 来表示一个 Java对象</span><br><span class="line">class instanceOopDesc : public oopDesc &#123;</span><br><span class="line">    // 没有其他变量</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">// 是所有 array 类型的抽象基类</span><br><span class="line">// 这个类没有定义纯虚函数来保证它是抽象类，因为这样会使这个c++类的每一个实例都会分配虚函数表</span><br><span class="line"></span><br><span class="line">// The layout of array Oops is:</span><br><span class="line"></span><br><span class="line">//  markOop</span><br><span class="line">//  klassOop  // 32 bits if compressed but declared 64 in LP64.</span><br><span class="line">//  length    // shares klass memory or allocated after declared fields.</span><br><span class="line">class arrayOopDesc : public oopDesc &#123;</span><br><span class="line"></span><br><span class="line">    /**   计算 header size : length字段的 offset +  length这个字段本身的大小（一个int）  */</span><br><span class="line">    // Header size computation.</span><br><span class="line">    // The header is considered the oop part of this type plus the length.</span><br><span class="line">    // Returns the aligned header_size_in_bytes.  This is not equivalent to</span><br><span class="line">    // sizeof(arrayOopDesc) which should not appear in the code.</span><br><span class="line">    static int header_size_in_bytes() &#123;</span><br><span class="line">        size_t hs = align_size_up(length_offset_in_bytes() + sizeof(int),</span><br><span class="line">                              HeapWordSize);</span><br><span class="line"></span><br><span class="line">    public:</span><br><span class="line">    /**  计算 length字段的 offset  */</span><br><span class="line">    // The _length field is not declared in C++.  It is allocated after the</span><br><span class="line">    // declared nonstatic fields in arrayOopDesc if not compressed, otherwise</span><br><span class="line">    // it occupies the second half of the _klass field in oopDesc.</span><br><span class="line">    static int length_offset_in_bytes() &#123;</span><br><span class="line">        return UseCompressedOops ? klass_gap_offset_in_bytes() :</span><br><span class="line">                               sizeof(arrayOopDesc);</span><br><span class="line">    &#125;</span><br><span class="line">  </span><br><span class="line">      // ... 省略</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <ul>
 <li>_mark是markOop类型对象，用于存储对象自身的运行时数据，如哈希码（HashCode）、GC分代年龄、锁状态标志、线程持有的锁、偏向线程ID、偏向时间戳等等，占用内存大小与虚拟机位长一致。</li>
@@ -473,10 +472,10 @@
 </ul>
 </li>
 </ul>
-<p>对象和数组的内存布局如下图：<br><img src="/assets/blogImg/JVM/Oop_Klass/2.png" alt><br><img src="/assets/blogImg/JVM/Oop_Klass/3.png" alt></p>
+<p>对象和数组的内存布局如下图：<br><img src="/assets/blogImg/JVM/Oop_Klass/2.png" width="900"></p>
 <h4 id="相关的-Klass-结构："><a href="#相关的-Klass-结构：" class="headerlink" title="相关的 Klass 结构："></a>相关的 Klass 结构：</h4><h5 id="注意"><a href="#注意" class="headerlink" title="注意"></a>注意</h5><p>以<code>instanceKlass</code>为例，，由于HotSpot从 JDK 1.8 开始移除了“PerGen(永生代)”，所以 <code>instanceKlass</code> 的结构不再包含 oop。</p>
-<h5 id="Klass"><a href="#Klass" class="headerlink" title="Klass"></a>Klass</h5><p><img src="/assets/blogImg/JVM/Oop_Klass/4.png" alt></p>
-<h5 id="instanceKlass"><a href="#instanceKlass" class="headerlink" title="instanceKlass"></a>instanceKlass</h5><p><img src="/assets/blogImg/JVM/Oop_Klass/5.png" alt></p>
+<h5 id="Klass"><a href="#Klass" class="headerlink" title="Klass"></a>Klass</h5><p><img src="/assets/blogImg/JVM/Oop_Klass/3.png" alt></p>
+<h5 id="instanceKlass"><a href="#instanceKlass" class="headerlink" title="instanceKlass"></a>instanceKlass</h5><p><img src="/assets/blogImg/JVM/Oop_Klass/4.png" alt></p>
 
       
     </div>
@@ -523,8 +522,8 @@
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/2019/06/05/JVM_Create_Instance/" rel="prev" title="HotSpot对象的创建">
-                HotSpot对象的创建 <i class="fa fa-chevron-right"></i>
+              <a href="/2019/06/05/JVM_Klass_vtbl_klassVtable/" rel="prev" title="Klass_vtbl和klassVtable的区别">
+                Klass_vtbl和klassVtable的区别 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -590,7 +589,7 @@
                 
                   <a href="/archives/">
                 
-                    <span class="site-state-item-count">62</span>
+                    <span class="site-state-item-count">66</span>
                     <span class="site-state-item-name">日志</span>
                   </a>
                 </div>
