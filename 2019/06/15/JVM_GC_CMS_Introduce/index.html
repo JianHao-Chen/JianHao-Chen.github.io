@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.1.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.1.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.1.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.1.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '7.1.1',
+    sidebar: {"position":"left","display":"post","offset":12,"onmobile":false,"dimmer":false},
+    back2top: true,
+    back2top_sidebar: false,
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="CMS（Concurrent Mark Sweep）收集器，是一款并发、使用标记-清除算法的收集器。它是针对老年代进行回收的收集器。CMS收集器的目标是获取最短的停顿时间，即（Stop The World）的时间最短。 本文将介绍CMS的原理及如何读懂它的日志。">
+<meta name="keywords" content="JVM">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CMS原理及日志">
+<meta property="og:url" content="http://yoursite.com/2019/06/15/JVM_GC_CMS_Introduce/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="CMS（Concurrent Mark Sweep）收集器，是一款并发、使用标记-清除算法的收集器。它是针对老年代进行回收的收集器。CMS收集器的目标是获取最短的停顿时间，即（Stop The World）的时间最短。 本文将介绍CMS的原理及如何读懂它的日志。">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/GC/CMS/1.png">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/GC/CMS/2.png">
+<meta property="og:image" content="http://yoursite.com/assets/blogImg/JVM/GC/CMS/3.png">
+<meta property="og:updated_time" content="2019-07-23T10:24:36.398Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="CMS原理及日志">
+<meta name="twitter:description" content="CMS（Concurrent Mark Sweep）收集器，是一款并发、使用标记-清除算法的收集器。它是针对老年代进行回收的收集器。CMS收集器的目标是获取最短的停顿时间，即（Stop The World）的时间最短。 本文将介绍CMS的原理及如何读懂它的日志。">
+<meta name="twitter:image" content="http://yoursite.com/assets/blogImg/JVM/GC/CMS/1.png">
+
+
+
+
+
+  
+  
+  <link rel="canonical" href="http://yoursite.com/2019/06/15/JVM_GC_CMS_Introduce/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>CMS原理及日志 | Hexo</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Hexo</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="切换导航栏">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>首页</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>标签</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>分类</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>归档</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/06/15/JVM_GC_CMS_Introduce/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="JH_Chen">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Hexo">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">CMS原理及日志
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+
+              
+                
+              
+
+              <time title="创建时间：2019-06-15 08:55:00" itemprop="dateCreated datePublished" datetime="2019-06-15T08:55:00+08:00">2019-06-15</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">更新于</span>
+                
+                <time title="修改时间：2019-07-23 18:24:36" itemprop="dateModified" datetime="2019-07-23T18:24:36+08:00">2019-07-23</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/JVM/" itemprop="url" rel="index"><span itemprop="name">JVM</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>CMS（Concurrent Mark Sweep）收集器，是一款并发、使用<font color="orange"><strong>标记-清除</strong></font>算法的收集器。<br>它是针对老年代进行回收的收集器。CMS收集器的目标是获取最短的停顿时间，即（Stop The World）的时间最短。</p>
+<p>本文将介绍CMS的原理及如何读懂它的日志。</p>
+<a id="more"></a>
+<h3 id="CMS的原理"><a href="#CMS的原理" class="headerlink" title="CMS的原理"></a>CMS的原理</h3><h4 id="收集过程"><a href="#收集过程" class="headerlink" title="收集过程"></a>收集过程</h4><p>可分为以下几个步骤：</p>
+<ul>
+<li><strong>初始标记(initial-mark)</strong>：<ul>
+<li>进行可达性分析，标记GC ROOT能直接关联到的对象</li>
+<li><font color="red">需要STW</font></li>
+<li>GC ROOT的数量很少，这个过程很快</li>
+</ul>
+</li>
+<li><strong>并发标记(concurrent-marking)</strong>：<ul>
+<li>由前阶段标记过的对象出发（如下图的绿色对象），所有可到达的对象都在本阶段中标记。</li>
+<li><font color="green">与用户线程并发进行</font>。</li>
+</ul>
+</li>
+<li><strong>并发预清理(concurrent-precleaning)</strong>：<ul>
+<li>重新扫描，减少重新标记阶段的工作量，因为需要STW。</li>
+<li><font color="green">与用户线程并发进行</font>。</li>
+</ul>
+</li>
+<li><strong>可中断的预清理(abortable-precleaning)</strong>：<ul>
+<li>和并发预清理阶段很像，这个阶段是可中断的。</li>
+</ul>
+</li>
+<li><strong>重新标记(remark)</strong>：<ul>
+<li>重新扫描堆中的对象，进行可达性分析，标记活着的对象。</li>
+<li>在并发标记阶段，可能有用户线程修改某些活跃对象的字段，指向了一个未标记过的对象，如下图中红色对象在并发标记开始时不可达，但是并行期间引用发生变化，变为对象可达，这个阶段需要重新标记出此类对象，防止在下一阶段被清理掉。</li>
+<li><font color="red">需要STW</font></li>
+</ul>
+</li>
+<li><strong>并发清理(concurrent-sweeping)</strong>：<ul>
+<li>进行并发的垃圾清理</li>
+<li><font color="green">与用户线程并发进行</font>。</li>
+</ul>
+</li>
+<li><strong>并发重置(concurrent-reset)</strong>：<ul>
+<li>重置CMS收集器的数据结构，做好下一次GC的准备。</li>
+</ul>
+</li>
+</ul>
+<p><img height="400" src="/assets/blogImg/JVM/GC/CMS/1.png"></p>
+<h4 id="补充"><a href="#补充" class="headerlink" title="补充"></a>补充</h4><h5 id="为什么需要【并发预清理】阶段？"><a href="#为什么需要【并发预清理】阶段？" class="headerlink" title="为什么需要【并发预清理】阶段？"></a>为什么需要【并发预清理】阶段？</h5><p>通过参数<code>CMSPrecleaningEnabled</code>选择关闭该阶段，默认启用。</p>
+<p>在【并发标记】阶段与用户线程并发，老年代中对象引用关系可能改变，例如：</p>
+<ul>
+<li>对象从新生代晋升</li>
+<li>对象新分配到老年代</li>
+<li>老年代对象的引用被更新</li>
+</ul>
+<p>因此这个阶段是为了减少【重新标记】阶段的工作量，减少STW的时间。</p>
+<h5 id="跨代引用问题"><a href="#跨代引用问题" class="headerlink" title="跨代引用问题"></a>跨代引用问题</h5><p><img height="400" src="/assets/blogImg/JVM/GC/CMS/2.png"></p>
+<p>如上图，对象A因为引用存在新生代中，这种新生代对象持有老年代中对象的引用的情况叫“跨代引用”。当然，也可以存在老年代对象持有新生代中对象的引用的情况。</p>
+<p>因此，<font color="pink"><strong>CMS虽然是老年代的gc，但仍要扫描新生代</strong></font>。</p>
+<h5 id="为什么需要【可中断的预清理】阶段"><a href="#为什么需要【可中断的预清理】阶段" class="headerlink" title="为什么需要【可中断的预清理】阶段"></a>为什么需要【可中断的预清理】阶段</h5><p>由于新生代中对象的特点是“朝生夕灭”，于是期望在【重新标记】阶段前，执行一次 Minor GC。于是添加了这个【可中断的预清理】阶段，期望在这个阶段，我们能等到一次Minor GC（GC是由JVM调度的，我们不能保证一定等到）。</p>
+<p>它的工作还是并发标记对象是否存活，但是它是可中断的，令这个阶段中断的条件有：</p>
+<ul>
+<li>时间超过阈值<code>CMSMaxAbortablePrecleanTime</code>（默认为5s）</li>
+<li>Eden区内存占用超过阈值<code>CMSScheduleRemarkEdenPenetration</code>（默认50%）</li>
+</ul>
+<p>CMS还提供了<code>CMSScavengeBeforeRemark</code>参数，用来保证Remark前强制进行一次Minor GC。这样做有利有弊：</p>
+<ul>
+<li>利：降低了Remark阶段的停顿时间</li>
+<li>弊：在新生代对象很少的情况下也多了一次YGC</li>
+</ul>
+<h5 id="卡表（card-table）"><a href="#卡表（card-table）" class="headerlink" title="卡表（card table）"></a>卡表（card table）</h5><p>如果老年代持有新生代对象引用，那么Minor GC时也必须扫描老年代了。</p>
+<p>经过统计信息显示，老年代持有新生代对象引用的情况不足1%，根据这一特性JVM引入了卡表（card table）来实现避免扫描老年代的。如下图所示：<br><img height="400" src="/assets/blogImg/JVM/GC/CMS/3.png"></p>
+<p>卡表的具体策略是将老年代的空间分成大小为512B的若干张卡（card）。</p>
+<p>卡表本身是单字节数组，数组中的每个元素对应着一张卡，当发生老年代引用新生代时，虚拟机将该卡对应的卡表元素设置为适当的值。</p>
+<p>如上图所示，卡表3被标记为脏（卡表还有另外的作用，标识并发标记阶段哪些块被修改过），之后Minor GC时通过扫描卡表就可以很快的识别哪些卡中存在老年代指向新生代的引用。</p>
+<p>这样虚拟机通过空间换时间的方式，避免了全堆扫描。</p>
+<h4 id="CMS的问题"><a href="#CMS的问题" class="headerlink" title="CMS的问题"></a>CMS的问题</h4><p>CMS（并发+标记-清除算法）就是问题的来源。</p>
+<h5 id="并发"><a href="#并发" class="headerlink" title="并发"></a>并发</h5><p>CMS收集器占用CPU资源，导致程序变慢，或说总吞吐量降低。</p>
+<h5 id="浮动垃圾-amp-并发模式失败"><a href="#浮动垃圾-amp-并发模式失败" class="headerlink" title="浮动垃圾 &amp; 并发模式失败"></a>浮动垃圾 &amp; 并发模式失败</h5><p>在CMS【并发清理】阶段，用户线程运行，就可能产生新的垃圾，需要下一次GC才能处理，它们被称为“浮动垃圾”。</p>
+<p>同样由于垃圾回收阶段用户线程仍在执行，必需预留出内存空间给用户线程使用。因此不能像其他回收器那样，等到老年代满了再进行GC。</p>
+<p>CMS 提供了<code>CMSInitiatingOccupancyFraction</code>参数（默认是92%）来设置老年代空间使用百分比,达到百分比就进行垃圾回收。</p>
+<p>如果CMS运行期间，预留的内存无法满足程序的需求，就会发生 <font color="red"><strong>concurrent mode failure（并发模式失败）</strong></font>。于是，JVM将使用备用方案：使用Serial Old收集器重新对老年代进行垃圾回收，如此一来，停顿时间变得更长。</p>
+<h5 id="内存碎片"><a href="#内存碎片" class="headerlink" title="内存碎片"></a>内存碎片</h5><p>使用标记-清除算法可能造成大量的空间碎片。空间碎片过多，就会给大对象分配带来麻烦。</p>
+<p>CMS的解决方案是使用<code>UseCMSCompactAtFullCollection</code>参数(默认开启)，在顶不住要进行Full GC时开启内存碎片整理。还提供了另外一个参数<code>CMSFullGCsBeforeCompaction</code>，用于设置执行多少次不压缩的Full GC后，跟着来一次带压缩的（默认为0，每次进入Full GC时都进行碎片整理）。</p>
+<h3 id="CMS的日志"><a href="#CMS的日志" class="headerlink" title="CMS的日志"></a>CMS的日志</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line">// 在初始标记发生时，老年代的大小为307200K，其中占用部分是298457K，整个Java Heap是491520K，占用部分为318955K。</span><br><span class="line">[GC (CMS Initial Mark) [1 CMS-initial-mark: 298457K(307200K)] 318955K(491520K), 0.0005977 secs] [Times: user=0.00 sys=0.00, real=0.00 secs] </span><br><span class="line"></span><br><span class="line">// 表示【并发标记】阶段开始</span><br><span class="line">[CMS-concurrent-mark-start]</span><br><span class="line">//【并发标记】阶段使用了0.006秒</span><br><span class="line">[CMS-concurrent-mark: 0.006/0.006 secs] [Times: user=0.00 sys=0.00, real=0.01 secs]</span><br><span class="line"></span><br><span class="line">// 表示【并发预清理】阶段开始</span><br><span class="line">[CMS-concurrent-preclean-start]</span><br><span class="line">// 【并发预清理】阶段使用了0.000秒</span><br><span class="line">[CMS-concurrent-preclean: 0.000/0.000 secs] [Times: user=0.00 sys=0.00, real=0.00 secs] </span><br><span class="line"></span><br><span class="line">// 表示【可中断的预清理】阶段开始</span><br><span class="line">[CMS-concurrent-abortable-preclean-start]</span><br><span class="line">// 【可中断的预清理】阶段使用了0.000秒</span><br><span class="line">[CMS-concurrent-abortable-preclean: 0.000/0.000 secs] [Times: user=0.00 sys=0.00, real=0.00 secs] </span><br><span class="line"></span><br><span class="line">// 这是【重新标记】阶段，它是STW的</span><br><span class="line">// 新生代内存为 184320K，占用了 23748K</span><br><span class="line">// Rescan (parallel)表示的是多线程处理young区和多线程扫描old+perm的卡表的总时间， parallel 表示多GC线程并行。</span><br><span class="line">// weak refs processing 处理old区的弱引用的总时间，用于回收native memory。</span><br><span class="line">// class unloading 回收SystemDictionary消耗的总时间</span><br><span class="line">// 整个阶段使用了 0.0015163 secs</span><br><span class="line">[GC (CMS Final Remark) </span><br><span class="line">  [YG occupancy: 23748 K (184320 K)]</span><br><span class="line">  [GC (CMS Final Remark) [ParNew: 23748K-&gt;23748K(184320K), 0.0000107 secs] 322206K-&gt;322206K(491520K), 0.0000250 secs] [Times: user=0.00 sys=0.00, real=0.00 secs] </span><br><span class="line">  [Rescan (parallel) , 0.0004074 secs]</span><br><span class="line">  [weak refs processing, 0.0000086 secs]</span><br><span class="line">  [class unloading, 0.0004800 secs]</span><br><span class="line">  [scrub symbol table, 0.0003852 secs]</span><br><span class="line">  [scrub string table, 0.0000886 secs]</span><br><span class="line">  [1 CMS-remark: 298457K(307200K)] 322206K(491520K), 0.0015163 secs] </span><br><span class="line">[Times: user=0.00 sys=0.00, real=0.00 secs]</span><br><span class="line"></span><br><span class="line">// 表示【并发清理】阶段开始</span><br><span class="line">[CMS-concurrent-sweep-start]</span><br><span class="line">// 【并发清理】阶段使用了0.002秒</span><br><span class="line">[CMS-concurrent-sweep: 0.002/0.002 secs] [Times: user=0.00 sys=0.00, real=0.00 secs] </span><br><span class="line"></span><br><span class="line">[CMS-concurrent-reset-start]</span><br><span class="line">[CMS-concurrent-reset: 0.000/0.000 secs] [Times: user=0.00 sys=0.00, real=0.00 secs]</span><br></pre></td></tr></table></figure>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/JVM/" rel="tag"># JVM</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/06/15/JVM_GC_Introduce/" rel="next" title="HotSpot内存管理基础知识">
+                <i class="fa fa-chevron-left"></i> HotSpot内存管理基础知识
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/06/16/JVM_GC_Heap/" rel="prev" title="HotSpot堆的实现">
+                HotSpot堆的实现 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">JH_Chen</p>
+              <div class="site-description motion-element" itemprop="description"></div>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">69</span>
+                    <span class="site-state-item-name">日志</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                      <a href="/categories/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">6</span>
+                    <span class="site-state-item-name">分类</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                      <a href="/tags/">
+                    
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">8</span>
+                    <span class="site-state-item-name">标签</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#CMS的原理"><span class="nav-number">1.</span> <span class="nav-text">CMS的原理</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#收集过程"><span class="nav-number">1.1.</span> <span class="nav-text">收集过程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#补充"><span class="nav-number">1.2.</span> <span class="nav-text">补充</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#为什么需要【并发预清理】阶段？"><span class="nav-number">1.2.1.</span> <span class="nav-text">为什么需要【并发预清理】阶段？</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#跨代引用问题"><span class="nav-number">1.2.2.</span> <span class="nav-text">跨代引用问题</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#为什么需要【可中断的预清理】阶段"><span class="nav-number">1.2.3.</span> <span class="nav-text">为什么需要【可中断的预清理】阶段</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#卡表（card-table）"><span class="nav-number">1.2.4.</span> <span class="nav-text">卡表（card table）</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#CMS的问题"><span class="nav-number">1.3.</span> <span class="nav-text">CMS的问题</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#并发"><span class="nav-number">1.3.1.</span> <span class="nav-text">并发</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#浮动垃圾-amp-并发模式失败"><span class="nav-number">1.3.2.</span> <span class="nav-text">浮动垃圾 &amp; 并发模式失败</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#内存碎片"><span class="nav-number">1.3.3.</span> <span class="nav-text">内存碎片</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#CMS的日志"><span class="nav-number">2.</span> <span class="nav-text">CMS的日志</span></a></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">JH_Chen</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> 强力驱动 v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Muse</a> v7.1.1</div>
+
+
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/utils.js?v=7.1.1"></script>
+
+  <script src="/js/motion.js?v=7.1.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/schemes/muse.js?v=7.1.1"></script>
+
+
+
+  
+  <script src="/js/scrollspy.js?v=7.1.1"></script>
+<script src="/js/post-details.js?v=7.1.1"></script>
+
+
+
+  
+
+
+  <script src="/js/next-boot.js?v=7.1.1"></script>
+
+
+  
+
+  
+
+  
+
+  
+
+
+
+  
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

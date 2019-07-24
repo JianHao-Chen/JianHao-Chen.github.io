@@ -106,7 +106,7 @@
 <meta property="og:locale" content="zh-CN">
 <meta property="og:image" content="http://yoursite.com/assets/blogImg/NetWork_Basic/Model/1.png">
 <meta property="og:image" content="http://yoursite.com/assets/blogImg/NetWork_Basic/Model/2.png">
-<meta property="og:updated_time" content="2019-06-16T11:23:37.289Z">
+<meta property="og:updated_time" content="2019-07-22T02:26:08.299Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="网络模型分层">
 <meta name="twitter:description" content="五层模型把互联网分成五层，比较容易解释： 1234567891011------------------------------| 应用层（Application Layer） |-------------------------------| 传输层（Transport Layer）   |-------------------------------| 网络层（Network Layer）">
@@ -387,7 +387,7 @@
                 
                   <span class="post-meta-item-text">更新于</span>
                 
-                <time title="修改时间：2019-06-16 19:23:37" itemprop="dateModified" datetime="2019-06-16T19:23:37+08:00">2019-06-16</time>
+                <time title="修改时间：2019-07-22 10:26:08" itemprop="dateModified" datetime="2019-07-22T10:26:08+08:00">2019-07-22</time>
               
             
           </span>
@@ -462,8 +462,8 @@
 <li>通过将源、目的地址的MAC地址填入帧的标头，发送数据包。</li>
 <li>当前以太网的机器都收到这个数据包，但是只有MAC地址对应的机器才会接收，其他机器会丢弃这个包。</li>
 </ul>
-<p>如何其他机器的MAC地址：通过<strong>ARP协议</strong>。</p>
-<h4 id="网络层（Network-Layer）"><a href="#网络层（Network-Layer）" class="headerlink" title="网络层（Network Layer）"></a>网络层（Network Layer）</h4><h5 id="网络层的由来"><a href="#网络层的由来" class="headerlink" title="网络层的由来"></a>网络层的由来</h5><p>互联网是一个由无数子网络共同组成的巨型网络，协议层只能解决同一子网络的通信，于是我们需要一个方法跨子网络的通信。<br><strong>网络层</strong>出现了，它的作用是：<font color="orange">引进一套新的地址，使得我们能够区分不同的计算机是否属于同一个子网络。这套地址就叫做”网络地址”，简称”网址”</font>。</p>
+<p>如何知道其他机器的MAC地址：通过<strong>ARP协议</strong>。</p>
+<h4 id="网络层（Network-Layer）"><a href="#网络层（Network-Layer）" class="headerlink" title="网络层（Network Layer）"></a>网络层（Network Layer）</h4><h5 id="网络层的由来"><a href="#网络层的由来" class="headerlink" title="网络层的由来"></a>网络层的由来</h5><p>互联网是一个由无数子网络共同组成的巨型网络，链路层只能解决同一子网络的通信，于是我们需要一个方法跨子网络的通信。<br><strong>网络层</strong>出现了，它的作用是：<font color="orange">引进一套新的地址，使得我们能够区分不同的计算机是否属于同一个子网络。这套地址就叫做”网络地址”，简称”网址”</font>。</p>
 <h5 id="IP协议"><a href="#IP协议" class="headerlink" title="IP协议"></a>IP协议</h5><ul>
 <li>IP协议：规定网络地址的协议</li>
 <li>IP地址：IP协议所定义的地址。目前广泛采用的是IP协议第四版，简称IPv4。</li>
@@ -477,7 +477,7 @@
 <li>Data部分：最长为 65,515 字节</li>
 </ul>
 <p>前面说过，以太网数据包的”数据”部分，最长只有1500字节。因此，如果IP数据包超过了1500字节，它就需要分割成几个以太网数据包，分开发送了。</p>
-<h4 id="传输层（Transport-Layer）"><a href="#传输层（Transport-Layer）" class="headerlink" title="传输层（Transport Layer）"></a>传输层（Transport Layer）</h4><h5 id="传输层的由来"><a href="#传输层的由来" class="headerlink" title="传输层的由来"></a>传输层的由来</h5><p>“网络层”的功能是建立”主机到主机”的通信。”传输层”的功能，就是建立”端口到端口”的通信。<br>只要确定主机和端口，我们就能实现程序之间的交流。因此，Unix系统就把主机+端口，叫做”套接字”（socket）。有了它，就可以进行网络应用程序开发了。</p>
+<h4 id="传输层（Transport-Layer）"><a href="#传输层（Transport-Layer）" class="headerlink" title="传输层（Transport Layer）"></a>传输层（Transport Layer）</h4><h5 id="传输层的由来"><a href="#传输层的由来" class="headerlink" title="传输层的由来"></a>传输层的由来</h5><p>“网络层”的功能是建立“主机到主机”的通信。“传输层”的功能，就是建立“端口到端口”的通信。<br>只要确定主机和端口，我们就能实现程序之间的交流。因此，Unix系统就把主机+端口，叫做“套接字”（socket）。有了它，就可以进行网络应用程序开发了。</p>
 <h5 id="UDP协议"><a href="#UDP协议" class="headerlink" title="UDP协议"></a>UDP协议</h5><p>UDP数据包，也是由”标头”和”数据”两部分组成：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">-------------------------------</span><br><span class="line">|   Head   |        Data      |</span><br><span class="line">-------------------------------</span><br></pre></td></tr></table></figure></p>
 <p>“标头”部分主要定义了<strong>发出端口</strong>和<strong>接收端口</strong>，”数据”部分就是具体的内容。把整个UDP数据包放入IP数据包的”数据”部分，而前面说过，IP数据包又是放在以太网数据包之中的，所以整个以太网数据包现在变成了下面这样：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">-----------------------------------------------------</span><br><span class="line">|   Head   |   Head   |   Head   |        Data      |</span><br><span class="line">-----------------------------------------------------</span><br></pre></td></tr></table></figure></p>
 <p>UDP数据包非常简单，”标头”部分一共只有8个字节，总长度不超过65,535字节，正好放进一个IP数据包。</p>
@@ -627,7 +627,7 @@
                 
                   <a href="/archives/">
                 
-                    <span class="site-state-item-count">66</span>
+                    <span class="site-state-item-count">69</span>
                     <span class="site-state-item-name">日志</span>
                   </a>
                 </div>
